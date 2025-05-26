@@ -10,7 +10,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
 
-
+# Main game loop
 running = True
 while running:
     clock.tick(FPS)  # Limit the frame rate to 60 FPS
