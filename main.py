@@ -1,4 +1,5 @@
 import pygame
+from Player import Player
 
 WIDTH = 800
 HEIGHT = 600
