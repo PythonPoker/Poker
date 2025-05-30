@@ -15,29 +15,17 @@ class Player(pygame.sprite.Sprite):
         self.chips = 1000
         return self.chips
     
-    def card(self):
-        self.card = random.randint(1, 13)
-        return self.card
-    def suit(self):
-        self.suit = random.choice(['Hearts', 'Diamonds', 'Clubs', 'Spades'])
-        return self.suit
     def bet(self, amount):
         if amount <= self.chips:
             self.chips -= amount
             return True
         else:
-            return False
+            return 
 
     def update(self):
         self.rect.y += self.speedy
         key_pressed = pygame.key.get_pressed()
         mouse_pressed = pygame.mouse.get_pressed()
-
-        if mouse_pressed[0]:
-            self.rect.x -= 5
-        
-        if mouse_pressed[2]:
-            self.rect.x += 5 
 
 all_sprites = pygame.sprite.Group()
 player = Player()
