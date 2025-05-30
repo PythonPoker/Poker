@@ -11,6 +11,23 @@ class Player(pygame.sprite.Sprite):
         self.speedy = 5
         self.rect.center = (400, 300)
 
+    def chips(self):
+        self.chips = 1000
+        return self.chips
+    
+    def card(self):
+        self.card = random.randint(1, 13)
+        return self.card
+    def suit(self):
+        self.suit = random.choice(['Hearts', 'Diamonds', 'Clubs', 'Spades'])
+        return self.suit
+    def bet(self, amount):
+        if amount <= self.chips:
+            self.chips -= amount
+            return True
+        else:
+            return False
+
     def update(self):
         self.rect.y += self.speedy
         key_pressed = pygame.key.get_pressed()
