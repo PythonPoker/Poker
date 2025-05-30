@@ -1,30 +1,39 @@
 import pygame
 from pygame.sprite import Sprite
+import random
 
-class Player(Sprite):
-    def __init__(self, name, position):
-        super().__init__()
-        self.name = name
-        self.position = position
-        self.hand = []
-        self.chips = 1000  # Starting chips for the player
-        self.is_active = True  # Indicates if the player is active in the game
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
+        self.image.fill((255, 0, 0))
+        self.rect = self.image.get_rect()
+        self.speedy = 5
+        self.rect.center = (400, 300)
 
-    def add_card(self, card):
-        """Add a card to the player's hand."""
-        self.hand.append(card)
+    def update(self):
+        self.rect.y += self.speedy
+        key_pressed = pygame.key.get_pressed()
+        mouse_pressed = pygame.mouse.get_pressed()
 
-    def reset_hand(self):
-        """Reset the player's hand for a new round."""
-        self.hand.clear()
+        if mouse_pressed[0]:
+            self.rect.x -= 5
+        
+        if mouse_pressed[2]:
+            self.rect.x += 5
+    
+class Rock(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
+        self.image.fill((0, 0, 255))
+        self.rect = self.image.get_rect()
+        self.rect.center = (random.randint(0, 800), random.randint(0, 600))
+    
+    
+    
 
-    def bet(self, amount):
-        """Place a bet and deduct chips."""
-        if amount <= self.chips:
-            self.chips -= amount
-            return True
-        return False
-
-    def receive_chips(self, amount):
-        """Receive chips after winning a hand."""
-        self.chips += amount
+all_sprites = pygame.sprite.Group()
+player = Player()
+rock = Rock()
+all_sprites.add(player) 
