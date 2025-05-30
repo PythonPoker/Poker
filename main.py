@@ -1,5 +1,9 @@
 import pygame
 from Player import Player
+from pygame.sprite import Sprite
+from Player import all_sprites
+import random
+
 
 WIDTH = 800
 HEIGHT = 600
@@ -15,9 +19,18 @@ clock = pygame.time.Clock()
 running = True
 while running:
     clock.tick(FPS)  # Limit the frame rate to 60 FPS
+
+    # Quitting the game
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+    # Update game state
+    all_sprites.update()  # Update all sprites
 
-    screen.fill((0, 0, 0))  # Fill the screen with black
-    pygame.display.flip()  # Update the display
+
+    # Update screen
+    screen.fill((255, 255, 255))  # Fill the screen with a color
+    all_sprites.draw(screen)  # Draw all sprites
+    pygame.display.update()  # Update the display
+
+pygame.quit()  # Quit Pygame
