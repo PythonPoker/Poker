@@ -1,56 +1,32 @@
-card_ranks = [
-    '2', '3', '4', '5', '6', '7',
-    '8', '9', 'T', 'J', 'Q', 'K', 'A'
-]
+import random
 
-card_suits = ['c', 'd', 's', 'h']
+# 定義一副牌
+suits = ['S', 'H', 'D', 'C']  # 黑桃、紅心、方塊、梅花
+ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']
 
-all_cards = [rank + suit for rank in card_ranks for suit in card_suits]
+def create_deck():
+    """建立一副52張牌"""
+    return [rank + suit for suit in suits for rank in ranks]
 
-card_codes = {card: index for index, card in enumerate(all_cards, 1)}
+def shuffle_deck(deck):
+    """洗牌"""
+    random.shuffle(deck)
+    return deck
+def deal_cards(deck, num_players=2, cards_per_player=2):
+    """發牌給玩家，回傳一個列表，每個元素是玩家的手牌"""
+    hands = []
+    for _ in range(num_players):
+        hand = []
+        for _ in range(cards_per_player):
+            hand.append(deck.pop(0))  # 從牌堆頂端發牌
+        hands.append(hand)
+    return hands
 
-class Card:
-    rank: str
-    suit: str
-
-    def __init__(self, rank: str, suit: str):
-        assert rank in card_ranks
-        assert suit in card_suits
-        self.rank = rank
-        self.suit = suit
-
-    def __eq__(self, other: 'Card'):
-        return self.code == other.code
-
-    def __str__(self):
-        return self.rank_suit
-
-    def __repr__(self):
-        return self.rank_suit
-
-    @property
-    def code(self):
-        return card_codes[self.rank + self.suit]
-
-    @property
-    def rank_suit(self):
-        return self.rank + self.suit
-
-    @property
-    def suit_rank(self):
-        return self.suit + self.rank
-
-    @staticmethod
-    def from_rank_suit(rank_suit: str) -> 'Card':
-        rank = rank_suit[0].upper()
-        suit = rank_suit[1].lower()
-        return Card(rank, suit)
-
-    @staticmethod
-    def from_suit_rank(suit_rank: str) -> 'Card':
-        rank = suit_rank[1].upper()
-        suit = suit_rank[0].lower()
-        return Card(rank, suit)
-
-    def json(self) -> str:
-        return self.rank_suit
+# 範例用法
+if __name__ == "__main__":
+    deck = create_deck()
+    shuffle_deck(deck)
+    print("洗牌後：", deck)
+    hands = deal_cards(deck, num_players=2, cards_per_player=2)
+    print("玩家手牌：", hands)
+    print("剩餘牌堆：", deck)
