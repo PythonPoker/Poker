@@ -1,8 +1,7 @@
 import pygame
-from Player import Player
+from player import Player, all_sprites
 from pygame.sprite import Sprite
-from card import create_deck, shuffle_deck, deal_cards
-from Player import all_sprites
+from card import Deck
 import random
 import os
 
@@ -17,23 +16,14 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
 # Create a player instance
-deck = create_deck()
-shuffle_deck(deck)
-hands = deal_cards(deck, num_players=2, cards_per_player=2)
-print("玩家手牌：", hands)
+deck = Deck()
+deck.shuffle()
+hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
+card_images = deck.load_card_images()
 
-card_images = {}
-for suit in ['S', 'H', 'D', 'C']:
-    for rank in ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']:
-        card_name = rank + suit
-        img_path = f"assets/img/{card_name}.jpg"
-        if os.path.exists(img_path):
-            img = pygame.image.load(img_path)           # 先載入圖片
-            img = pygame.transform.scale(img, (60, 90)) # 再縮小
-            card_images[card_name] = img                # 存進字典
-        else:
-            print(f"警告：找不到圖片 {img_path}")
-
+community_cards = []
+deal_index = 0
+game_start_time = pygame.time.get_ticks()
 
 
 # Main game loop
@@ -61,6 +51,24 @@ while running:
             x = start_x + j * 80
             y = 400 if i == 0 else 100  # 玩家1和玩家2不同Y座標
             screen.blit(img, (x, y))
+    
+    
+        if pygame.time.get_ticks() - game_start_time > 3000:
+            deal_index, game_start_time = deck.deal_community_cards(
+                community_cards, deal_index, game_start_time
+        )
+    
+    community_card_positions = [
+        (WIDTH//2 - 2*70, HEIGHT//2 - 45),
+        (WIDTH//2 - 70,   HEIGHT//2 - 45),
+        (WIDTH//2,        HEIGHT//2 - 45),
+        (WIDTH//2 + 70,   HEIGHT//2 - 45),
+        (WIDTH//2 + 2*70, HEIGHT//2 - 45),
+    ]
+    for idx, card in enumerate(community_cards):
+        img = card_images[card]
+        pos = community_card_positions[idx]
+        screen.blit(img, pos)
 
     pygame.display.update()  # Update the display
 
