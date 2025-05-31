@@ -36,13 +36,13 @@ class Deck:
             last_deal_time = now
         return deal_index, last_deal_time
 
-    def load_card_images(self, img_folder="assets/img", size=(60, 90)):
+    def load_card_images(self, img_folder="assets/img", size=(80, 120)):
         """載入所有撲克牌圖片，回傳字典 {卡牌名稱: 圖片物件}"""
         self.card_images = {}
         for suit in self.suits:
             for rank in self.ranks:
                 card_name = rank + suit
-                img_path = os.path.join(img_folder, f"{card_name}.jpg")
+                img_path = os.path.join(img_folder, f"{card_name}.png")
                 if os.path.exists(img_path):
                     img = pygame.image.load(img_path)
                     img = pygame.transform.scale(img, size)
