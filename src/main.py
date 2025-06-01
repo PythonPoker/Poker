@@ -80,28 +80,33 @@ while running:
     for i, hand in enumerate(hands):
         start_x, y = player_positions[i]
         for j, card in enumerate(hand):
-            img = card_images[card]
-            x = start_x + j * 80
-            screen.blit(img, (x, y))
-    
-    for i, hand in enumerate(hands):
-        start_x, y = player_positions[i]
-        for j, card in enumerate(hand):
-            img = card_images[card]
+            # 玩家2且公牌未全開，用牌背
+            if i == 1 and len(community_cards) < 5:
+                img = card_images["BACK"]
+            else:
+                img = card_images[card]
             x = start_x + j * 80
             screen.blit(img, (x, y))
         # 取得目前最大牌型
         cards_to_check = hand + community_cards
-        if len(cards_to_check) >= 5:
+        # 玩家1隨時顯示牌型，玩家2只在公開時顯示
+        if i == 0:
+            if len(cards_to_check) >= 5:
+                best_rank = best_five(cards_to_check)
+                hand_type = get_hand_type_name(best_rank)
+            else:
+                hand_type = ""
+            text = font.render(hand_type, True, (255, 255, 255))
+            text_x = start_x
+            text_y = y + CARD_HEIGHT + 5
+            screen.blit(text, (text_x, text_y))
+        elif i == 1 and len(community_cards) == 5:
             best_rank = best_five(cards_to_check)
             hand_type = get_hand_type_name(best_rank)
-        else:
-            hand_type = ""
-        # 顯示在手牌下方
-        text = font.render(hand_type, True, (255, 255, 255))
-        text_x = start_x
-        text_y = y + CARD_HEIGHT + 5  # 在手牌下方5px
-        screen.blit(text, (text_x, text_y))
+            text = font.render(hand_type, True, (255, 255, 255))
+            text_x = start_x
+            text_y = y + CARD_HEIGHT + 5
+            screen.blit(text, (text_x, text_y))
 
     if len(community_cards) == 5 and not showed_result:
         result = compare_players(hands[0], hands[1], community_cards)
