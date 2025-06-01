@@ -6,7 +6,7 @@ import random
 import os
 from enum import Enum, auto
 from action import PlayerAction
-from result import compare_players
+from result import PokerResult
 
 
 WIDTH = 1280
@@ -41,6 +41,15 @@ button_rects = get_button_rects(WIDTH, HEIGHT)
 
 last_mouse_check = pygame.time.get_ticks()
 
+compare_players = PokerResult.compare_players
+hand_rank = PokerResult.hand_rank
+get_hand_type_name = PokerResult.get_hand_type_name
+best_five = PokerResult.best_five
+
+player_positions = [
+    (WIDTH // 2 - (len(hands[0]) * 80) // 2, HEIGHT - CARD_HEIGHT - 40),  # 玩家1：下中
+    (WIDTH // 2 - (len(hands[1]) * 80) // 2, 40)                          # 玩家2：上中
+    ]
 
 # Main game loop
 running = True
@@ -67,6 +76,32 @@ while running:
     action = PlayerAction.get_player_action(button_rects, mouse_pos, mouse_pressed)
     now = pygame.time.get_ticks()
     action = None
+
+    for i, hand in enumerate(hands):
+        start_x, y = player_positions[i]
+        for j, card in enumerate(hand):
+            img = card_images[card]
+            x = start_x + j * 80
+            screen.blit(img, (x, y))
+    
+    for i, hand in enumerate(hands):
+        start_x, y = player_positions[i]
+        for j, card in enumerate(hand):
+            img = card_images[card]
+            x = start_x + j * 80
+            screen.blit(img, (x, y))
+        # 取得目前最大牌型
+        cards_to_check = hand + community_cards
+        if len(cards_to_check) >= 5:
+            best_rank = best_five(cards_to_check)
+            hand_type = get_hand_type_name(best_rank)
+        else:
+            hand_type = ""
+        # 顯示在手牌下方
+        text = font.render(hand_type, True, (255, 255, 255))
+        text_x = start_x
+        text_y = y + CARD_HEIGHT + 5  # 在手牌下方5px
+        screen.blit(text, (text_x, text_y))
 
     if len(community_cards) == 5 and not showed_result:
         result = compare_players(hands[0], hands[1], community_cards)
@@ -125,19 +160,6 @@ while running:
                 community_cards.append(deck.cards.pop(0))
                 game_stage += 1
             waiting_for_action = True
-  
-
-    player_positions = [
-    (WIDTH // 2 - (len(hands[0]) * 80) // 2, HEIGHT - CARD_HEIGHT - 40),  # 玩家1：下中
-    (WIDTH // 2 - (len(hands[1]) * 80) // 2, 40)                          # 玩家2：上中
-    ]
-
-    for i, hand in enumerate(hands):
-        start_x, y = player_positions[i]
-        for j, card in enumerate(hand):
-            img = card_images[card]
-            x = start_x + j * 80
-            screen.blit(img, (x, y))
     
     community_card_positions = [
     (WIDTH//2 - 2*100 - CARD_WIDTH//2, HEIGHT//2 - CARD_HEIGHT//2),
@@ -151,6 +173,8 @@ while running:
         img = card_images[card]
         pos = community_card_positions[idx]
         screen.blit(img, pos)
+    
+
     
 
 
