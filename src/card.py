@@ -49,4 +49,13 @@ class Deck:
                     self.card_images[card_name] = img
                 else:
                     print(f"警告：找不到圖片 {img_path}")
-        return self.card_images
+                back_path = os.path.join(img_folder, "back.jpg")
+
+        if os.path.exists(back_path):
+            back_img = pygame.image.load(back_path)
+            back_img = pygame.transform.scale(back_img, size)
+            self.card_images["BACK"] = back_img
+        else:
+            print(f"警告：找不到圖片 {back_path}")
+
+        return self.card_images     
