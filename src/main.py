@@ -8,7 +8,6 @@ from enum import Enum, auto
 from action import PlayerAction
 from result import PokerResult
 
-
 WIDTH = 1280
 HEIGHT = 720
 FPS = 60
@@ -62,7 +61,6 @@ while running:
             running = False
     # Update game state
     all_sprites.update()  # Update all sprites
-
 
     # Update screen
     screen.fill((0,0,0))  # Fill the screen with a color
@@ -178,10 +176,6 @@ while running:
         img = card_images[card]
         pos = community_card_positions[idx]
         screen.blit(img, pos)
-    
-
-    
-
 
     pygame.display.update()  # Update the display
 
