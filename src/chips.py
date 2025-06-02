@@ -1,16 +1,19 @@
 from action import PlayerAction
 import pygame
 
+ 
+
 class Chips:
-    def __init__(self, player, amount=1000):
+    chips = 1000 
+    def __init__(self, player, chips):
         self.player = player
-        self.amount = amount
+        self.chips = chips
 
     def add(self, value):
-        self.amount += value
+        self.chips += value
 
     def subtract(self, value):
-        self.amount -= value
+        self.chips -= value
 
     def get_amount(self):
-        return self.amount
+        return self.chips
