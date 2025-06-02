@@ -28,18 +28,25 @@ hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
 card_images = deck.load_card_images()
 draw_action_buttons = PlayerAction.draw_action_buttons
 get_button_rects = PlayerAction.get_button_rects
+showed_hands = False 
 showed_result = False
+showdown_time = None
+
+pot_given = False
+pot_give_time = None
+
 game_stage = GameStage.PREFLOP
 next_stage_time = None
 pending_next_stage = False
+
 community_cards = []
 deal_index = 0
 winner_text = ""
 result_time = None
 
 player_bets = [0, 0]  # 記錄每位玩家本輪下注額
-current_player = 0    # 0: 玩家1, 1: 玩家2
 waiting_for_action = False
+actions_this_round = 0
 
 font = pygame.font.SysFont(None, 36)
 
@@ -56,6 +63,7 @@ pot = 0
 
 players = [Player(0), Player(1)]
 big_blind_player = random.randint(0, 1)
+current_player = 1 - big_blind_player
 players[big_blind_player].set_big_blind(True)
 players[1 - big_blind_player].set_big_blind(False)
 
@@ -98,7 +106,7 @@ while running:
     screen.fill((0,0,0))  # Fill the screen with a color
 
     # Draw action buttons
-    draw_action_buttons(screen, font, button_rects)
+    draw_action_buttons(screen, font, button_rects, player_bets, current_player, players)
 
     now = pygame.time.get_ticks()
 
@@ -149,59 +157,80 @@ while running:
             text_y = y + CARD_HEIGHT + 5
             screen.blit(text, (text_x, text_y))
 
-    # 攤牌結算只在 SHOWDOWN 階段
-    if game_stage == GameStage.SHOWDOWN and not showed_result:
-        result = compare_players(hands[0], hands[1], community_cards)
-        if result == 1:
-            winner_text = "P1 WINS"
-        elif result == -1:
-            winner_text = "P2 WINS"
-        else:
-            winner_text = "DRAW"
-        showed_result = True
-        result_time = pygame.time.get_ticks()
-        
-    if showed_result and winner_text:
-        text_surface = font.render(winner_text, True, (255, 255, 0))
-        text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2 + CARD_HEIGHT))
-        screen.blit(text_surface, text_rect)
+        # 在手牌右邊顯示黃點，表示輪到該玩家行動
+        if i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN:
+            dot_radius = 15
+            dot_x = start_x + len(hand) * 80 + 30
+            dot_y = y + CARD_HEIGHT // 2
+            pygame.draw.circle(screen, (255, 215, 0), (dot_x, dot_y), dot_radius)
 
-    # 勝負顯示3秒後自動開新局
-    if showed_result and result_time and pygame.time.get_ticks() - result_time > 3000:
-        if winner_text == "P1 WINS":
-            players[0].chips += pot
-            pot = 0
-        elif winner_text == "P2 WINS":
-            players[1].chips += pot
-            pot = 0
-        elif winner_text == "DRAW":
-            players[0].chips += pot // 2
-            players[1].chips += pot // 2
-            pot = 0
-        # 重置遊戲狀態
-        deck = Deck()
-        deck.shuffle()
-        hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
-        community_cards.clear()
-        deal_index = 0
-        game_stage = GameStage.PREFLOP
-        showed_result = False
-        winner_text = ""
-        result_time = None
-        big_blind_player = 1 - big_blind_player
-        players[big_blind_player].set_big_blind(True)
-        players[1 - big_blind_player].set_big_blind(False)
-        # 新大盲下注10
-        big_blind_amount = 10
-        player_bets = [0, 0]
-        bet = 0
-        if players[big_blind_player].chips >= big_blind_amount:
-            players[big_blind_player].chips -= big_blind_amount
-            player_bets[big_blind_player] = big_blind_amount
-            bet = big_blind_amount
+    # SHOWDOWN階段：先公開手牌，3秒後顯示勝負，再2秒後自動開新局
+    if game_stage == GameStage.SHOWDOWN:
+        if not showed_hands:
+            showdown_time = pygame.time.get_ticks()
+            showed_hands = True
+            pot_given = False
+            pot_give_time = None
+        elif showed_hands and not showed_result:
+            # 等3秒後顯示勝負
+            if showdown_time and pygame.time.get_ticks() - showdown_time > 3000:
+                result = compare_players(hands[0], hands[1], community_cards)
+                if result == 1:
+                    winner_text = "P1 WINS"
+                elif result == -1:
+                    winner_text = "P2 WINS"
+                else:
+                    winner_text = "DRAW"
+                showed_result = True
+                result_time = pygame.time.get_ticks()
+        elif showed_result and winner_text:
+            # 顯示勝負
+            text_surface = font.render(winner_text, True, (255, 255, 0))
+            text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2 + CARD_HEIGHT))
+            screen.blit(text_surface, text_rect)
+            now = pygame.time.get_ticks()
+            # 2秒後加pot到勝者，只加一次
+            if not pot_given and result_time and now - result_time > 2000:
+                if winner_text == "P1 WINS":
+                    players[0].chips += pot
+                elif winner_text == "P2 WINS":
+                    players[1].chips += pot
+                elif winner_text == "DRAW":
+                    players[0].chips += pot // 2
+                    players[1].chips += pot // 2
+                pot = 0
+                pot_given = True
+                pot_give_time = now
+
+        # pot給出後再等2秒才開新局
+        if pot_given and pot_give_time and now - pot_give_time > 2000:
+            deck.shuffle()
+            hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
+            community_cards.clear()
+            deal_index = 0
+            game_stage = GameStage.PREFLOP
+            showed_result = False
+            showed_hands = False
+            winner_text = ""
+            result_time = None
+            showdown_time = None
+            pot_given = False
+            pot_give_time = None
+            big_blind_player = 1 - big_blind_player
+            players[big_blind_player].set_big_blind(True)
+            players[1 - big_blind_player].set_big_blind(False)
+            big_blind_amount = 10
+            player_bets = [0, 0]
+            bet = 0
+            if players[big_blind_player].chips >= big_blind_amount:
+                players[big_blind_player].chips -= big_blind_amount
+                player_bets[big_blind_player] = big_blind_amount
+                bet = big_blind_amount
+            current_player = 1 - big_blind_player
 
     # 行動
     if action and not pending_next_stage:
+        actions_this_round += 1
         if action == PlayerAction.FOLD:
             winner = 1 - current_player
             winner_text = f"P{winner+1} WINS"
@@ -211,71 +240,73 @@ while running:
             player_bets = [0, 0]
             showed_result = True
             result_time = pygame.time.get_ticks()
+            pending_next_stage = False
+            actions_this_round = 0
+            continue # 跳過後續行動處理
 
-        elif action == PlayerAction.CALL:
+        elif action == PlayerAction.CALL_OR_CHECK:
             max_bet = max(player_bets)
-            call_amount = max_bet - player_bets[current_player]
-            if players[current_player].chips >= call_amount:
-                players[current_player].chips -= call_amount
-                player_bets[current_player] += call_amount
+            if player_bets[current_player] < max_bet:
+                # CALL
+                call_amount = max_bet - player_bets[current_player]
+                if players[current_player].chips >= call_amount:
+                    players[current_player].chips -= call_amount
+                    player_bets[current_player] += call_amount
+                else:
+                    # 不夠CALL就ALL IN
+                    player_bets[current_player] += players[current_player].chips
+                    players[current_player].chips = 0
+            # CHECK
             current_player = 1 - current_player
 
-        elif action == PlayerAction.CHECK:
-            if player_bets[current_player] == max(player_bets):
-                current_player = 1 - current_player
+        elif action == PlayerAction.BET_OR_RAISE:
+            max_bet = max(player_bets)
+            raise_amount = 10
+            if max_bet == 0:
+                # BET
+                bet_amount = min(raise_amount, players[current_player].chips)
+                player_bets[current_player] += bet_amount
+                players[current_player].chips -= bet_amount
+            else:
+                # RAISE
+                to_call = max_bet - player_bets[current_player]
+                total_raise = to_call + raise_amount
+                total_raise = min(total_raise, players[current_player].chips + to_call)
+                # 不能讓籌碼為負
+                if players[current_player].chips < total_raise:
+                    player_bets[current_player] += players[current_player].chips
+                    players[current_player].chips = 0
+                else:
+                    players[current_player].chips -= total_raise
+                    player_bets[current_player] += total_raise
+            current_player = 1 - current_player
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-        if player_bets[0] == player_bets[1]:
-            if (player_bets[0] > 0 or player_bets[1] > 0) or action == PlayerAction.CHECK:
-                # 設定等待進入下個階段
-                pending_next_stage = True
-                next_stage_time = pygame.time.get_ticks()
-
-        elif action == PlayerAction.CHECK:
-            # 只有當自己已經跟到最大注時才能 check
-            if player_bets[current_player] == max(player_bets):
-                current_player = 1 - current_player
-
-        elif action == PlayerAction.CHECK:
-            # 過牌：不扣籌碼、不加 bet
-            if game_stage == GameStage.PREFLOP:
-                for _ in range(3):
-                    community_cards.append(deck.cards.pop(0))
-                game_stage = GameStage.FLOP
-                pot += bet
-                bet = 0
-            elif game_stage == GameStage.FLOP:
-                community_cards.append(deck.cards.pop(0))
-                game_stage = GameStage.TURN
-                pot += bet
-                bet = 0
-            elif game_stage == GameStage.TURN:
-                community_cards.append(deck.cards.pop(0))
-                game_stage = GameStage.RIVER
-                pot += bet
-                bet = 0
-            elif game_stage == GameStage.RIVER:
-                # 河牌後最後一輪過牌，進入攤牌
-                pot += bet
-                bet = 0
-                game_stage = GameStage.SHOWDOWN
-            waiting_for_action = True
-
-        # 2秒後進入下個階段
+        if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
+            pending_next_stage = True
+            next_stage_time = pygame.time.get_ticks()
+        
+    # 2秒後進入下個階段
     if pending_next_stage and next_stage_time and pygame.time.get_ticks() - next_stage_time > 2000:
         pot += player_bets[0] + player_bets[1]
         player_bets = [0, 0]
         bet = 0
+        actions_this_round = 0
+        # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:
             for _ in range(3):
                 community_cards.append(deck.cards.pop(0))
             game_stage = GameStage.FLOP
+            # 翻牌後由小盲先行動
+            current_player = big_blind_player
         elif game_stage == GameStage.FLOP:
             community_cards.append(deck.cards.pop(0))
             game_stage = GameStage.TURN
+            current_player = big_blind_player
         elif game_stage == GameStage.TURN:
             community_cards.append(deck.cards.pop(0))
             game_stage = GameStage.RIVER
+            current_player = big_blind_player
         elif game_stage == GameStage.RIVER:
             game_stage = GameStage.SHOWDOWN
         pending_next_stage = False

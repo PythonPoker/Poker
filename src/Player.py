@@ -1,8 +1,9 @@
 import pygame
 from pygame.sprite import Sprite
+from chips import Chips
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id, chips=1000):
+    def __init__(self, player_id, chips = Chips.chips):
         super().__init__()
         self.player_id = player_id
         self.chips = chips
