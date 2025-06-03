@@ -359,13 +359,9 @@ while running:
                     player_bets[current_player] += pay
                     current_player = 1 - current_player
                     raise_input_text = ""
-                else:
-                    action = None
-            else:
-                action = None
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-            if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
+        if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
                 pending_next_stage = True
                 next_stage_time = pygame.time.get_ticks()
                 if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
@@ -398,6 +394,9 @@ while running:
             current_player = big_blind_player
         elif game_stage == GameStage.RIVER:
             game_stage = GameStage.SHOWDOWN
+            showed_result = False
+            showed_hands = False
+            showdown_time = None
         pending_next_stage = False
         next_stage_time = None
 
