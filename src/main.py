@@ -378,6 +378,8 @@ while running:
         bet = 0
         actions_this_round = 0
         min_raise_amount = big_blind_amount
+        raise_input_text = ""
+        
         # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:
             for _ in range(3):
