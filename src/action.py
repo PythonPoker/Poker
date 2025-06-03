@@ -73,6 +73,7 @@ class PlayerAction(Enum):
         raise_input=None,
         min_raise=10,
         max_raise=1000,
+        raise_button_text = "RAISE",
     ):
         """
         在畫面上繪製行動按鈕

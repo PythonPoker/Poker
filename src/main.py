@@ -67,8 +67,9 @@ players[1 - big_blind_player].set_big_blind(False)
 
 # 大盲下注10
 bet = 0
-
 big_blind_amount = 10
+last_raise_amount = big_blind_amount
+
 if players[big_blind_player].chips >= big_blind_amount:
     players[big_blind_player].chips -= big_blind_amount
     player_bets[big_blind_player] = big_blind_amount
@@ -89,16 +90,15 @@ while running:
     button_rects = get_button_rects(game_setting["WIDTH"], game_setting["HEIGHT"])
     action = None
 
-    # 計算最小加注金額
     max_bet = max(player_bets)
     to_call = max_bet - player_bets[current_player]
-    min_raise_amount = 10
-    if max_bet > 0:
-        min_raise_amount = to_call + 10
+    # 最小加注金額計算
+    if max_bet > 0 and player_bets[1 - current_player] > 0:
+        min_raise_amount = player_bets[1 - current_player] * 2 - player_bets[current_player]
+        min_raise_amount = max(min_raise_amount, big_blind_amount)  # 不低於大盲
     else:
-        min_raise_amount = 10
+        min_raise_amount = big_blind_amount
 
-    # 直接顯示使用者輸入（允許空字串）
     display_raise_input = raise_input_text
 
     for event in pygame.event.get():
@@ -114,9 +114,16 @@ while running:
                 if raise_input_text == "":
                     raise_input_text = str(min_raise_amount)
             else:
-                # 點擊框外才回到預設
+                # 點擊框外
                 raise_input_active = False
-                raise_input_text = str(min_raise_amount)
+                # 若玩家輸入的數字小於最小加注，則自動設為最小加注
+                if raise_input_text.isdigit():
+                    if int(raise_input_text) < min_raise_amount:
+                        raise_input_text = str(min_raise_amount)
+                    # 否則保留玩家輸入
+                else:
+                    # 若輸入不是數字，設為預設
+                    raise_input_text = str(min_raise_amount)
 
         elif event.type == pygame.KEYDOWN and raise_input_active:
             raise_input_text = handle_raise_input(
@@ -140,6 +147,12 @@ while running:
     screen.fill((0, 0, 0))  # Fill the screen with a color
 
     # Draw action buttons
+    is_allin_input = (
+        display_raise_input.isdigit() and 
+        int(display_raise_input) == players[current_player].chips
+    )
+    raise_button_text = "ALL-IN" if is_allin_input else "RAISE"
+
     draw_action_buttons(
         screen,
         font,
@@ -150,6 +163,7 @@ while running:
         raise_input=display_raise_input,
         min_raise=min_raise_amount,
         max_raise=players[current_player].chips,
+        raise_button_text=raise_button_text,
     )
 
     now = pygame.time.get_ticks()
@@ -162,43 +176,52 @@ while running:
         chip_text_y = y + game_setting["CARD_HEIGHT"] // 2 - chip_text.get_height() // 2
         screen.blit(chip_text, (chip_text_x, chip_text_y))
 
-        # 玩家1的下注顯示在手牌上方，玩家2維持在手牌下方
-        bet_text = font.render(f"Bet: {player_bets[i]}", True, (0, 255, 255))
+        # 判斷是否ALL-IN
+        allin_this_round = (player_bets[i] > 0 and player_bets[i] == players[i].chips + player_bets[i] and players[i].chips == 0)
+        # 其實只要本輪下注等於原本籌碼+本輪下注且籌碼為0就代表ALL-IN
+        if player_bets[i] > 0 and players[i].chips == 0:
+            bet_display = "ALL-IN"
+        else:
+            bet_display = f"{player_bets[i]}"
+
+        bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
+        # 置中顯示下注額
+        bet_text_x = start_x + (len(hand) * 80 - bet_text.get_width()) // 2
         if i == 0:
-            bet_text_x = start_x
             bet_text_y = y - bet_text.get_height() - 10  # 手牌上方 10px
         else:
-            bet_text_x = start_x
-            bet_text_y = y + game_setting["CARD_HEIGHT"] + 30  # 玩家2維持下方
+            bet_text_y = y + game_setting["CARD_HEIGHT"] + 10  # 玩家2維持下方
         screen.blit(bet_text, (bet_text_x, bet_text_y))
 
         for j, card in enumerate(hand):
-            # 玩家2只有在SHOWDOWN才亮牌
-            if i == 1 and game_stage != GameStage.SHOWDOWN:
+            # 玩家2只有在SHOWDOWN或showed_hands時才亮牌
+            if i == 1 and not showed_hands and game_stage != GameStage.SHOWDOWN:
                 img = card_images["BACK"]
             else:
                 img = card_images[card]
             x = start_x + j * 80
             screen.blit(img, (x, y))
+
         # 取得目前最大牌型
         cards_to_check = hand + community_cards
+
         # 玩家1隨時顯示牌型，玩家2只在SHOWDOWN時顯示
-        if i == 0:
+        if (i == 0) or (i == 1 and (showed_hands or game_stage == GameStage.SHOWDOWN)):
             if len(cards_to_check) >= 5:
                 best_rank = best_five(cards_to_check)
                 hand_type = get_hand_type_name(best_rank)
             else:
                 hand_type = ""
+            # 計算灰底位置與大小
+            rect_x = start_x
+            rect_y = y + game_setting["CARD_HEIGHT"] - 40  # 蓋住手牌下方
+            rect_width = len(hand) * 80
+            rect_height = 40
+            pygame.draw.rect(screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height))
+            # 白字置中
             text = font.render(hand_type, True, (255, 255, 255))
-            text_x = start_x
-            text_y = y + game_setting["CARD_HEIGHT"] + 5
-            screen.blit(text, (text_x, text_y))
-        elif i == 1 and game_stage == GameStage.SHOWDOWN:
-            best_rank = best_five(cards_to_check)
-            hand_type = get_hand_type_name(best_rank)
-            text = font.render(hand_type, True, (255, 255, 255))
-            text_x = start_x
-            text_y = y + game_setting["CARD_HEIGHT"] + 5
+            text_x = rect_x + (rect_width - text.get_width()) // 2
+            text_y = rect_y + (rect_height - text.get_height()) // 2
             screen.blit(text, (text_x, text_y))
 
         # 在手牌右邊顯示黃點，表示輪到該玩家行動
@@ -281,6 +304,7 @@ while running:
                 player_bets[big_blind_player] = big_blind_amount
                 bet = big_blind_amount
             current_player = 1 - big_blind_player
+            last_raise_amount = big_blind_amount
 
     # 行動
     if action and not pending_next_stage:
@@ -316,42 +340,36 @@ while running:
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
             to_call = max_bet - player_bets[current_player]
-            min_raise_amount = 10
-            if max_bet > 0:
-                min_raise_amount = to_call + 10
+            # 最小加注金額計算
+            if max_bet > 0 and player_bets[1 - current_player] > 0:
+                min_raise_amount = player_bets[1 - current_player] * 2 - player_bets[current_player]
+                min_raise_amount = max(min_raise_amount, big_blind_amount)
             else:
-                min_raise_amount = 10
+                min_raise_amount = big_blind_amount
             max_raise = players[current_player].chips
-            # 用 display_raise_input 來判斷
             if display_raise_input.isdigit():
                 raise_amount = int(display_raise_input)
                 if min_raise_amount <= raise_amount <= max_raise:
-                    if max_bet == 0:
-                        bet_amount = min(raise_amount, players[current_player].chips)
-                        player_bets[current_player] += bet_amount
-                        players[current_player].chips -= bet_amount
-                    else:
-                        total_raise = to_call + raise_amount
-                        total_raise = min(
-                            total_raise, players[current_player].chips + to_call
-                        )
-                        if players[current_player].chips < total_raise:
-                            player_bets[current_player] += players[current_player].chips
-                            players[current_player].chips = 0
-                        else:
-                            players[current_player].chips -= total_raise
-                            player_bets[current_player] += total_raise
+                    total_bet = to_call + raise_amount
+                    total_bet = min(total_bet, players[current_player].chips + player_bets[current_player])
+                    pay = total_bet - player_bets[current_player]
+                    if players[current_player].chips < pay:
+                        pay = players[current_player].chips
+                    players[current_player].chips -= pay
+                    player_bets[current_player] += pay
                     current_player = 1 - current_player
-                    raise_input_text = ""  # 清空輸入
+                    raise_input_text = ""
                 else:
                     action = None
             else:
                 action = None
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-        if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
-            pending_next_stage = True
-            next_stage_time = pygame.time.get_ticks()
+            if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
+                pending_next_stage = True
+                next_stage_time = pygame.time.get_ticks()
+                if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
+                    showed_hands = True  # 立即公開手牌
 
     # 2秒後進入下個階段
     if (
@@ -363,12 +381,12 @@ while running:
         player_bets = [0, 0]
         bet = 0
         actions_this_round = 0
+        min_raise_amount = big_blind_amount
         # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:
             for _ in range(3):
                 community_cards.append(deck.cards.pop(0))
             game_stage = GameStage.FLOP
-            # 翻牌後由小盲先行動
             current_player = big_blind_player
         elif game_stage == GameStage.FLOP:
             community_cards.append(deck.cards.pop(0))
@@ -382,6 +400,12 @@ while running:
             game_stage = GameStage.SHOWDOWN
         pending_next_stage = False
         next_stage_time = None
+
+        # 若還有玩家ALL-IN且未到SHOWDOWN，繼續自動進入下階段
+        if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
+            pending_next_stage = True
+            next_stage_time = pygame.time.get_ticks()
+            showed_hands = True  # 持續公開手牌
 
     community_card_positions = [
         (
