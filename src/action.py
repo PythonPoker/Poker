@@ -120,16 +120,10 @@ class PlayerAction(Enum):
                 input_rect = pygame.Rect(rect.x, rect.y - 60, rect.width, 40)
                 pygame.draw.rect(screen, (255, 255, 255), input_rect, 2)
                 input_text = font.render(str(raise_input), True, (255, 255, 0))
-                screen.blit(input_text, (input_rect.x + 10, input_rect.y + 5))
-                # 提示
-                tip = font.render(f"{min_raise}-{max_raise}", True, (180, 180, 180))
-                screen.blit(
-                    tip,
-                    (
-                        input_rect.x + input_rect.width - tip.get_width() - 10,
-                        input_rect.y + 5,
-                    ),
-                )
+                # 讓文字靠右顯示
+                text_x = input_rect.right - input_text.get_width() - 10
+                text_y = input_rect.y + 5
+                screen.blit(input_text, (text_x, text_y))
 
     def handle_raise_input(event, current_text, min_raise, max_raise):
         """處理加注輸入框的事件，回傳新字串"""
@@ -141,3 +135,11 @@ class PlayerAction(Enum):
                 if len(current_text) < 6:
                     return current_text + event.unicode
         return current_text
+    
+    @staticmethod
+    def get_raise_input_rect(button_rects):
+        """取得BET/RAISE按鈕上方的輸入框rect"""
+        for action, rect in button_rects:
+            if action == PlayerAction.BET_OR_RAISE:
+                return pygame.Rect(rect.x, rect.y - 60, rect.width, 40)
+        return None

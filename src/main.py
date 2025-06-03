@@ -30,6 +30,7 @@ showed_result = False
 showdown_time = None
 handle_raise_input = PlayerAction.handle_raise_input
 raise_input_text = ""
+raise_input_active = False
 
 pot_given = False
 pot_give_time = None
@@ -48,8 +49,6 @@ waiting_for_action = False
 actions_this_round = 0
 
 font = pygame.font.SysFont(None, 36)
-
-button_rects = get_button_rects(game_setting["WIDTH"], game_setting["HEIGHT"])
 
 last_mouse_check = pygame.time.get_ticks()
 
@@ -86,34 +85,50 @@ player_positions = [
 # Main game loop
 running = True
 while running:
-    clock.tick(game_setting["FPS"])  # Limit the frame rate to 60 FPS
-
+    clock.tick(game_setting["FPS"])
+    button_rects = get_button_rects(game_setting["WIDTH"], game_setting["HEIGHT"])
     action = None
 
-    # Quitting the game & 處理滑鼠釋放事件
+    # 計算最小加注金額
+    max_bet = max(player_bets)
+    to_call = max_bet - player_bets[current_player]
+    min_raise_amount = 10
+    if max_bet > 0:
+        min_raise_amount = to_call + 10
+    else:
+        min_raise_amount = 10
+
+    # 直接顯示使用者輸入（允許空字串）
+    display_raise_input = raise_input_text
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-        elif event.type == pygame.KEYDOWN:
-            if (
-                not showed_result
-                and not pending_next_stage
-                and game_stage != GameStage.SHOWDOWN
-            ):
-                raise_input_text = handle_raise_input(
-                    event,
-                    raise_input_text,
-                    player_bets[current_player] + 10,
-                    players[current_player].chips,
-                )
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            raise_input_rect = PlayerAction.get_raise_input_rect(button_rects)
+            if raise_input_rect and raise_input_rect.collidepoint(mouse_pos):
+                raise_input_active = True
+                # 點擊輸入框時，如果目前是空的，填入預設
+                if raise_input_text == "":
+                    raise_input_text = str(min_raise_amount)
+            else:
+                # 點擊框外才回到預設
+                raise_input_active = False
+                raise_input_text = str(min_raise_amount)
+
+        elif event.type == pygame.KEYDOWN and raise_input_active:
+            raise_input_text = handle_raise_input(
+                event,
+                raise_input_text,
+                min_raise_amount,
+                players[current_player].chips
+            )
+
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            # 只在未顯示結果時才允許輸入
             if not showed_result:
                 mouse_pos = pygame.mouse.get_pos()
-                button_rects = get_button_rects(
-                    game_setting["WIDTH"], game_setting["HEIGHT"]
-                )
                 action = PlayerAction.get_player_action(
                     button_rects, mouse_pos, (1, 0, 0)
                 )
@@ -132,8 +147,8 @@ while running:
         player_bets,
         current_player,
         players,
-        raise_input=raise_input_text,
-        min_raise=10,
+        raise_input=display_raise_input,
+        min_raise=min_raise_amount,
         max_raise=players[current_player].chips,
     )
 
@@ -300,19 +315,22 @@ while running:
 
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
-            min_raise = 10
+            to_call = max_bet - player_bets[current_player]
+            min_raise_amount = 10
+            if max_bet > 0:
+                min_raise_amount = to_call + 10
+            else:
+                min_raise_amount = 10
             max_raise = players[current_player].chips
-            if raise_input_text.isdigit():
-                raise_amount = int(raise_input_text)
-                if min_raise <= raise_amount <= max_raise:
+            # 用 display_raise_input 來判斷
+            if display_raise_input.isdigit():
+                raise_amount = int(display_raise_input)
+                if min_raise_amount <= raise_amount <= max_raise:
                     if max_bet == 0:
-                        # BET
                         bet_amount = min(raise_amount, players[current_player].chips)
                         player_bets[current_player] += bet_amount
                         players[current_player].chips -= bet_amount
                     else:
-                        # RAISE
-                        to_call = max_bet - player_bets[current_player]
                         total_raise = to_call + raise_amount
                         total_raise = min(
                             total_raise, players[current_player].chips + to_call
@@ -326,10 +344,8 @@ while running:
                     current_player = 1 - current_player
                     raise_input_text = ""  # 清空輸入
                 else:
-                    # 不合法，等待重新輸入
                     action = None
             else:
-                # 尚未輸入金額，等待
                 action = None
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
