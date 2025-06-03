@@ -2,8 +2,9 @@ import pygame
 from pygame.sprite import Sprite
 from chips import Chips
 
+
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id, chips = Chips.chips):
+    def __init__(self, player_id, chips=Chips.chips):
         super().__init__()
         self.player_id = player_id
         self.chips = chips
@@ -23,5 +24,6 @@ class Player(pygame.sprite.Sprite):
 
     def add_chips(self, amount):
         self.chips += amount
+
 
 all_sprites = pygame.sprite.Group()

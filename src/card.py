@@ -2,9 +2,10 @@ import random
 import os
 import pygame
 
+
 class Deck:
-    suits = ['S', 'H', 'D', 'C']  # 黑桃、紅心、方塊、梅花
-    ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']
+    suits = ["S", "H", "D", "C"]  # 黑桃、紅心、方塊、梅花
+    ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K"]
 
     def __init__(self):
         self.cards = [rank + suit for suit in self.suits for rank in self.ranks]
@@ -22,7 +23,9 @@ class Deck:
             hands.append(hand)
         return hands
 
-    def deal_community_cards(self, community_cards, deal_index, last_deal_time, interval=3000):
+    def deal_community_cards(
+        self, community_cards, deal_index, last_deal_time, interval=3000
+    ):
         """發公牌：前三張一起，之後每interval毫秒一張，最多五張"""
         now = pygame.time.get_ticks()
         if deal_index == 0 and len(community_cards) < 3:
@@ -58,4 +61,4 @@ class Deck:
         else:
             print(f"警告：找不到圖片 {back_path}")
 
-        return self.card_images     
+        return self.card_images

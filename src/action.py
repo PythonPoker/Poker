@@ -6,6 +6,7 @@ BUTTON_WIDTH = 100
 BUTTON_HEIGHT = 50
 BUTTON_GAP = 20
 
+
 class PlayerAction(Enum):
     FOLD = auto()
     CALL_OR_CHECK = auto()
@@ -18,9 +19,33 @@ class PlayerAction(Enum):
         start_x = WIDTH - total_width - 40
         y = HEIGHT - BUTTON_HEIGHT - 80
         return [
-            (PlayerAction.FOLD, pygame.Rect(start_x + 0 * (BUTTON_WIDTH + BUTTON_GAP), y, BUTTON_WIDTH, BUTTON_HEIGHT)),
-            (PlayerAction.CALL_OR_CHECK, pygame.Rect(start_x + 1 * (BUTTON_WIDTH + BUTTON_GAP), y, BUTTON_WIDTH, BUTTON_HEIGHT)),
-            (PlayerAction.BET_OR_RAISE, pygame.Rect(start_x + 2 * (BUTTON_WIDTH + BUTTON_GAP), y, BUTTON_WIDTH, BUTTON_HEIGHT)),
+            (
+                PlayerAction.FOLD,
+                pygame.Rect(
+                    start_x + 0 * (BUTTON_WIDTH + BUTTON_GAP),
+                    y,
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT,
+                ),
+            ),
+            (
+                PlayerAction.CALL_OR_CHECK,
+                pygame.Rect(
+                    start_x + 1 * (BUTTON_WIDTH + BUTTON_GAP),
+                    y,
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT,
+                ),
+            ),
+            (
+                PlayerAction.BET_OR_RAISE,
+                pygame.Rect(
+                    start_x + 2 * (BUTTON_WIDTH + BUTTON_GAP),
+                    y,
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT,
+                ),
+            ),
         ]
 
     @staticmethod
@@ -38,23 +63,31 @@ class PlayerAction(Enum):
         return None
 
     @staticmethod
-    def draw_action_buttons(screen, font, button_rects, player_bets, current_player, players):
+    def draw_action_buttons(
+        screen,
+        font,
+        button_rects,
+        player_bets,
+        current_player,
+        players,
+        raise_input=None,
+        min_raise=10,
+        max_raise=1000,
+    ):
         """
         在畫面上繪製行動按鈕
-        button_rects: [(PlayerAction, pygame.Rect), ...]
-        player_bets: 當前每位玩家的下注額
-        current_player: 當前玩家編號
-        players: 玩家物件列表（用於判斷籌碼）
+        raise_input: 若不為None，顯示在RAISE按鈕上方的輸入框
+        min_raise, max_raise: 顯示於提示
         """
         colors = {
-            PlayerAction.FOLD:  (200, 50, 50),    # 紅色
-            PlayerAction.CALL_OR_CHECK: (50, 150, 200),   # 藍色
-            PlayerAction.BET_OR_RAISE: (50, 200, 100),   # 綠色
+            PlayerAction.FOLD: (200, 50, 50),  # 紅色
+            PlayerAction.CALL_OR_CHECK: (50, 150, 200),  # 藍色
+            PlayerAction.BET_OR_RAISE: (50, 200, 100),  # 綠色
         }
         labels = {
-            PlayerAction.FOLD:  "FOLD",
+            PlayerAction.FOLD: "FOLD",
             PlayerAction.CALL_OR_CHECK: "CALL",  # 預設
-            PlayerAction.BET_OR_RAISE: "RAISE", # 預設
+            PlayerAction.BET_OR_RAISE: "RAISE",  # 預設
         }
         # 動態決定 CALL_OR_CHECK 按鈕的文字
         max_bet = max(player_bets)
@@ -74,10 +107,37 @@ class PlayerAction(Enum):
             colors[PlayerAction.BET_OR_RAISE] = (50, 200, 100)  # 綠色
         else:
             labels[PlayerAction.BET_OR_RAISE] = "ALL IN"
-            colors[PlayerAction.BET_OR_RAISE] = (160, 0, 0)  # 黃色
+            colors[PlayerAction.BET_OR_RAISE] = (160, 0, 0)  # 深紅色
 
         for action, rect in button_rects:
             pygame.draw.rect(screen, colors[action], rect)
             text = font.render(labels[action], True, (0, 0, 0))
             text_rect = text.get_rect(center=rect.center)
             screen.blit(text, text_rect)
+
+            # 如果是BET_OR_RAISE且raise_input不為None，畫輸入框在按鈕上方
+            if action == PlayerAction.BET_OR_RAISE and raise_input is not None:
+                input_rect = pygame.Rect(rect.x, rect.y - 60, rect.width, 40)
+                pygame.draw.rect(screen, (255, 255, 255), input_rect, 2)
+                input_text = font.render(str(raise_input), True, (255, 255, 0))
+                screen.blit(input_text, (input_rect.x + 10, input_rect.y + 5))
+                # 提示
+                tip = font.render(f"{min_raise}-{max_raise}", True, (180, 180, 180))
+                screen.blit(
+                    tip,
+                    (
+                        input_rect.x + input_rect.width - tip.get_width() - 10,
+                        input_rect.y + 5,
+                    ),
+                )
+
+    def handle_raise_input(event, current_text, min_raise, max_raise):
+        """處理加注輸入框的事件，回傳新字串"""
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:
+                return current_text[:-1]
+            elif event.unicode.isdigit():
+                # 限制長度避免太大
+                if len(current_text) < 6:
+                    return current_text + event.unicode
+        return current_text

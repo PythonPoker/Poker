@@ -1,10 +1,10 @@
 from action import PlayerAction
 import pygame
 
- 
 
 class Chips:
-    chips = 1000 
+    chips = 1000
+
     def __init__(self, player, chips):
         self.player = player
         self.chips = chips
