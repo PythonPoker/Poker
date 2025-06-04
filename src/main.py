@@ -153,18 +153,19 @@ while running:
     )
     raise_button_text = "ALL-IN" if is_allin_input else "RAISE"
 
-    draw_action_buttons(
-        screen,
-        font,
-        button_rects,
-        player_bets,
-        current_player,
-        players,
-        raise_input=display_raise_input,
-        min_raise=min_raise_amount,
-        max_raise=players[current_player].chips,
-        raise_button_text=raise_button_text,
-    )
+    if not pending_next_stage and not showed_result and game_stage != GameStage.SHOWDOWN:
+        draw_action_buttons(
+            screen,
+            font,
+            button_rects,
+            player_bets,
+            current_player,
+            players,
+            raise_input=display_raise_input,
+            min_raise=min_raise_amount,
+            max_raise=players[current_player].chips,
+            raise_button_text=raise_button_text,
+        )
 
     now = pygame.time.get_ticks()
 
