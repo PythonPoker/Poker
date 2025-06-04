@@ -133,6 +133,10 @@ while running:
                 min_raise_amount,
                 players[current_player].chips
             )
+            if raise_input_text.isdigit():
+                max_raise = players[current_player].chips
+                if int(raise_input_text) > max_raise:
+                    raise_input_text = str(max_raise)
 
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if not showed_result:
