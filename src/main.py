@@ -157,9 +157,13 @@ while running:
         display_raise_input.isdigit() and 
         int(display_raise_input) == max_raise
     )
-    raise_button_text = "ALL-IN" if is_allin_input else "RAISE"
+    if max_bet == 0:
+        raise_button_text = "BET" if not is_allin_input else "ALL-IN"
+    else:
+        raise_button_text = "RAISE" if not is_allin_input else "ALL-IN"
+
     call_is_allin = (to_call > 0 and players[current_player].chips == to_call)
-    call_button_text = "ALL-IN" if call_is_allin else "CALL"
+    call_button_text = "ALL-IN" if call_is_allin else ("CHECK" if to_call == 0 else "CALL")
 
     # 判斷只能ALL-IN跟注時隱藏RAISE按鈕
     only_allin_call = (
@@ -408,7 +412,6 @@ while running:
                     else:
                         last_actions[current_player] = "RAISE"
                     last_actions[1 - current_player] = ""
-                    # 正確處理加注：先補齊 call，再加 raise_amount
                     pay = raise_amount
                     # 不能超過玩家所有籌碼
                     pay = min(pay, players[current_player].chips)

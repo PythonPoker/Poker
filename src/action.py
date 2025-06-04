@@ -92,7 +92,7 @@ class PlayerAction(Enum):
             PlayerAction.BET_OR_RAISE: raise_button_text,  # 預設
         }
 
-        # 動態顏色：ALL-IN 顯示紅色
+        # 動態顏色設定
         if call_button_text == "ALL-IN":
             colors[PlayerAction.CALL_OR_CHECK] = (180, 0, 0)
         elif call_button_text == "CALL":
