@@ -73,8 +73,8 @@ class PlayerAction(Enum):
         raise_input=None,
         min_raise=10,
         max_raise=1000,
-        raise_button_text = "RAISE",
-        call_button_text = "CALL",
+        raise_button_text="RAISE",
+        call_button_text="CALL",
     ):
         """
         在畫面上繪製行動按鈕
@@ -133,7 +133,7 @@ class PlayerAction(Enum):
                 if len(current_text) < 6:
                     return current_text + event.unicode
         return current_text
-    
+
     @staticmethod
     def get_raise_input_rect(button_rects):
         """取得BET/RAISE按鈕上方的輸入框rect"""

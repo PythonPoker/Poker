@@ -10,6 +10,7 @@ from result import PokerResult
 from chips import Chips
 from game_stage import GameStage
 from game_setting import load_game_settings
+from bot import PokerBot
 
 # Initialize Pygame and create a window
 pygame.init()
@@ -61,6 +62,7 @@ best_five = PokerResult.best_five
 pot = 0
 
 players = [Player(0), Player(1)]
+bot = PokerBot(1)  # 玩家2是bot
 big_blind_player = random.randint(0, 1)
 current_player = 1 - big_blind_player
 players[big_blind_player].set_big_blind(True)
@@ -84,6 +86,10 @@ player_positions = [
     (game_setting["WIDTH"] // 2 - (len(hands[1]) * 80) // 2, 40),  # 玩家2：上中
 ]
 
+bot_action_pending = False
+bot_action_time = 0
+bot_action_result = None
+
 # Main game loop
 running = True
 while running:
@@ -95,55 +101,89 @@ while running:
     to_call = max_bet - player_bets[current_player]
     # 最小加注金額計算
     if max_bet > 0 and player_bets[1 - current_player] > 0:
-        min_raise_amount = player_bets[1 - current_player] * 2 - player_bets[current_player]
+        min_raise_amount = (
+            player_bets[1 - current_player] * 2 - player_bets[current_player]
+        )
         min_raise_amount = max(min_raise_amount, big_blind_amount)  # 不低於大盲
     else:
         min_raise_amount = big_blind_amount
 
     display_raise_input = raise_input_text
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
-            raise_input_rect = PlayerAction.get_raise_input_rect(button_rects)
-            if raise_input_rect and raise_input_rect.collidepoint(mouse_pos):
-                raise_input_active = True
-                # 點擊輸入框時，如果目前是空的，填入預設
-                if raise_input_text == "":
-                    raise_input_text = str(min_raise_amount)
-            else:
-                # 點擊框外
-                raise_input_active = False
-                # 若玩家輸入的數字小於最小加注，則自動設為最小加注
-                if raise_input_text.isdigit():
-                    if int(raise_input_text) < min_raise_amount:
-                        raise_input_text = str(min_raise_amount)
-                    # 否則保留玩家輸入
-                else:
-                    # 若輸入不是數字，設為預設
-                    raise_input_text = str(min_raise_amount)
-
-        elif event.type == pygame.KEYDOWN and raise_input_active:
-            raise_input_text = handle_raise_input(
-                event,
-                raise_input_text,
+    # --- Bot行動 ---
+    if (
+        current_player == 1
+        and not showed_result
+        and not pending_next_stage
+        and game_stage != GameStage.SHOWDOWN
+    ):
+        if not bot_action_pending:
+            bot_action_time = pygame.time.get_ticks()
+            bot_action_result = bot.act(
+                hands[1],
+                community_cards,
+                player_bets,
+                players,
                 min_raise_amount,
-                players[current_player].chips
+                players[1].chips,
+                to_call,
+                game_stage,
             )
-            if raise_input_text.isdigit():
-                max_raise = players[current_player].chips
-                if int(raise_input_text) > max_raise:
-                    raise_input_text = str(max_raise)
+            bot_action_pending = True
+        elif pygame.time.get_ticks() - bot_action_time >= 2000:
+            bot_action, bot_amount = bot_action_result
+            if bot_action == "fold":
+                action = PlayerAction.FOLD
+            elif bot_action in ("call", "check"):
+                action = PlayerAction.CALL_OR_CHECK
+            elif bot_action in ("bet", "raise", "allin"):
+                action = PlayerAction.BET_OR_RAISE
+                raise_input_text = str(bot_amount)
+            bot_action_pending = False
+    else:
+        bot_action_pending = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if not showed_result:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
-                action = PlayerAction.get_player_action(
-                    button_rects, mouse_pos, (1, 0, 0)
+                raise_input_rect = PlayerAction.get_raise_input_rect(button_rects)
+                if raise_input_rect and raise_input_rect.collidepoint(mouse_pos):
+                    raise_input_active = True
+                    # 點擊輸入框時，如果目前是空的，填入預設
+                    if raise_input_text == "":
+                        raise_input_text = str(min_raise_amount)
+                else:
+                    # 點擊框外
+                    raise_input_active = False
+                    # 若玩家輸入的數字小於最小加注，則自動設為最小加注
+                    if raise_input_text.isdigit():
+                        if int(raise_input_text) < min_raise_amount:
+                            raise_input_text = str(min_raise_amount)
+                        # 否則保留玩家輸入
+                    else:
+                        # 若輸入不是數字，設為預設
+                        raise_input_text = str(min_raise_amount)
+
+            elif event.type == pygame.KEYDOWN and raise_input_active:
+                raise_input_text = handle_raise_input(
+                    event,
+                    raise_input_text,
+                    min_raise_amount,
+                    players[current_player].chips,
                 )
+                if raise_input_text.isdigit():
+                    max_raise = players[current_player].chips
+                    if int(raise_input_text) > max_raise:
+                        raise_input_text = str(max_raise)
+
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if not showed_result:
+                    mouse_pos = pygame.mouse.get_pos()
+                    action = PlayerAction.get_player_action(
+                        button_rects, mouse_pos, (1, 0, 0)
+                    )
 
     # Update game state
     all_sprites.update()  # Update all sprites
@@ -165,7 +205,6 @@ while running:
     call_is_allin = (to_call > 0 and players[current_player].chips == to_call)
     call_button_text = "ALL-IN" if call_is_allin else ("CHECK" if to_call == 0 else "CALL")
 
-    # 判斷只能ALL-IN跟注時隱藏RAISE按鈕
     only_allin_call = (
         to_call == players[current_player].chips and
         players[current_player].chips > 0 and
@@ -179,7 +218,12 @@ while running:
             if action != PlayerAction.BET_OR_RAISE
         ]
 
-    if not pending_next_stage and not showed_result and game_stage != GameStage.SHOWDOWN:
+    if (
+        not pending_next_stage
+        and not showed_result
+        and game_stage != GameStage.SHOWDOWN
+        and not (current_player == 1 and bot_action_pending)  # 玩家2是bot且未行動時不顯示按鈕
+    ):
         draw_action_buttons(
             screen,
             font,
@@ -211,7 +255,11 @@ while running:
         screen.blit(action_text, (action_text_x, action_text_y))
 
         # 判斷是否ALL-IN
-        allin_this_round = (player_bets[i] > 0 and player_bets[i] == players[i].chips + player_bets[i] and players[i].chips == 0)
+        allin_this_round = (
+            player_bets[i] > 0
+            and player_bets[i] == players[i].chips + player_bets[i]
+            and players[i].chips == 0
+        )
 
         # 顯示手牌下注額
         bet_display = f"{player_bets[i]}"
@@ -249,7 +297,9 @@ while running:
             rect_y = y + game_setting["CARD_HEIGHT"] - 40  # 蓋住手牌下方
             rect_width = len(hand) * 80
             rect_height = 40
-            pygame.draw.rect(screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height))
+            pygame.draw.rect(
+                screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height)
+            )
             # 白字置中
             text = font.render(hand_type, True, (255, 255, 255))
             text_x = rect_x + (rect_width - text.get_width()) // 2
@@ -361,6 +411,9 @@ while running:
             result_time = pygame.time.get_ticks()
             pending_next_stage = False
             actions_this_round = 0
+            game_stage = GameStage.SHOWDOWN
+            showed_hands = True
+            showdown_time = pygame.time.get_ticks()
             continue  # 跳過後續行動處理
 
         elif action == PlayerAction.CALL_OR_CHECK:
@@ -372,7 +425,9 @@ while running:
                 # 如果call方籌碼不足，則只跟到自己籌碼
                 if players[current_player].chips <= call_amount:
                     # 計算超過的籌碼
-                    over_bet = (player_bets[1 - current_player] - (players[current_player].chips + player_bets[current_player]))
+                    over_bet = player_bets[1 - current_player] - (
+                        players[current_player].chips + player_bets[current_player]
+                    )
                     if over_bet > 0:
                         # 把超過的籌碼退還給下注方
                         player_bets[1 - current_player] -= over_bet
@@ -390,14 +445,23 @@ while running:
             else:
                 last_actions[current_player] = "CHECK"
             last_actions[1 - current_player] = ""
-            current_player = 1 - current_player
+
+            # 如果是小盲玩家，則換到大盲玩家行動
+            if game_stage == GameStage.PREFLOP:
+                current_player = 1 - current_player
+            else:
+                # 如果還沒到兩次行動，換到另一位玩家
+                if actions_this_round < 2:
+                    current_player = 1 - current_player
 
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
             to_call = max_bet - player_bets[current_player]
             # 最小加注金額計算
             if max_bet > 0 and player_bets[1 - current_player] > 0:
-                min_raise_amount = player_bets[1 - current_player] * 2 - player_bets[current_player]
+                min_raise_amount = (
+                    player_bets[1 - current_player] * 2 - player_bets[current_player]
+                )
                 min_raise_amount = max(min_raise_amount, big_blind_amount)
             else:
                 min_raise_amount = big_blind_amount
@@ -426,10 +490,10 @@ while running:
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
         if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
-                pending_next_stage = True
-                next_stage_time = pygame.time.get_ticks()
-                if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
-                    showed_hands = True  # 立即公開手牌
+            pending_next_stage = True
+            next_stage_time = pygame.time.get_ticks()
+            if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
+                showed_hands = True  # 立即公開手牌
 
     # 2秒後進入下個階段
     if (
@@ -445,7 +509,7 @@ while running:
         raise_input_text = ""
         if not showed_hands:
             last_actions = ["", ""]
-        
+
         # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:
             for _ in range(3):
