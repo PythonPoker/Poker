@@ -47,6 +47,7 @@ result_time = None
 player_bets = [0, 0]  # 記錄每位玩家本輪下注額
 waiting_for_action = False
 actions_this_round = 0
+last_actions = ["", ""]  # 記錄每位玩家最後的行動
 
 font = pygame.font.SysFont(None, 36)
 
@@ -176,6 +177,12 @@ while running:
         chip_text_x = start_x - 180
         chip_text_y = y + game_setting["CARD_HEIGHT"] // 2 - chip_text.get_height() // 2
         screen.blit(chip_text, (chip_text_x, chip_text_y))
+
+        # 在手牌左邊顯示最後行動
+        action_text = font.render(last_actions[i], True, (200, 200, 0))
+        action_text_x = chip_text_x
+        action_text_y = chip_text_y + chip_text.get_height() + 5
+        screen.blit(action_text, (action_text_x, action_text_y))
 
         # 判斷是否ALL-IN
         allin_this_round = (player_bets[i] > 0 and player_bets[i] == players[i].chips + player_bets[i] and players[i].chips == 0)
@@ -311,6 +318,8 @@ while running:
     if action and not pending_next_stage:
         actions_this_round += 1
         if action == PlayerAction.FOLD:
+            last_actions[current_player] = "FOLD"
+            last_actions[1 - current_player] = ""
             winner = 1 - current_player
             winner_text = f"P{winner+1} WINS"
             players[winner].chips += pot + sum(player_bets)
@@ -326,6 +335,7 @@ while running:
         elif action == PlayerAction.CALL_OR_CHECK:
             max_bet = max(player_bets)
             if player_bets[current_player] < max_bet:
+                last_actions[current_player] = "CALL"
                 # CALL
                 call_amount = max_bet - player_bets[current_player]
                 if players[current_player].chips >= call_amount:
@@ -336,6 +346,9 @@ while running:
                     player_bets[current_player] += players[current_player].chips
                     players[current_player].chips = 0
             # CHECK
+            else:
+                last_actions[current_player] = "CHECK"
+            last_actions[1 - current_player] = ""
             current_player = 1 - current_player
 
         elif action == PlayerAction.BET_OR_RAISE:
@@ -351,6 +364,12 @@ while running:
             if display_raise_input.isdigit():
                 raise_amount = int(display_raise_input)
                 if min_raise_amount <= raise_amount <= max_raise:
+                    if max(player_bets) == 0:
+                        last_actions[current_player] = "BET"
+                    else:
+                        last_actions[current_player] = "RAISE"
+                    last_actions[1 - current_player] = ""
+                    # 處理加注
                     total_bet = to_call + raise_amount
                     total_bet = min(total_bet, players[current_player].chips + player_bets[current_player])
                     pay = total_bet - player_bets[current_player]
@@ -380,6 +399,7 @@ while running:
         actions_this_round = 0
         min_raise_amount = big_blind_amount
         raise_input_text = ""
+        last_actions = ["", ""]  # 重設行動紀錄
         
         # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:
