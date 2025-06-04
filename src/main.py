@@ -152,17 +152,34 @@ while running:
     screen.fill((0, 0, 0))  # Fill the screen with a color
 
     # Draw action buttons
+    max_raise = players[current_player].chips
     is_allin_input = (
         display_raise_input.isdigit() and 
-        int(display_raise_input) == players[current_player].chips
+        int(display_raise_input) == max_raise
     )
     raise_button_text = "ALL-IN" if is_allin_input else "RAISE"
+    call_is_allin = (to_call > 0 and players[current_player].chips == to_call)
+    call_button_text = "ALL-IN" if call_is_allin else "CALL"
+
+    # 判斷只能ALL-IN跟注時隱藏RAISE按鈕
+    only_allin_call = (
+        to_call == players[current_player].chips and
+        players[current_player].chips > 0 and
+        min_raise_amount > players[current_player].chips
+    )
+    filtered_button_rects = button_rects
+    if only_allin_call:
+        filtered_button_rects = [
+            (action, rect)
+            for action, rect in button_rects
+            if action != PlayerAction.BET_OR_RAISE
+        ]
 
     if not pending_next_stage and not showed_result and game_stage != GameStage.SHOWDOWN:
         draw_action_buttons(
             screen,
             font,
-            button_rects,
+            filtered_button_rects,
             player_bets,
             current_player,
             players,
@@ -170,6 +187,7 @@ while running:
             min_raise=min_raise_amount,
             max_raise=players[current_player].chips,
             raise_button_text=raise_button_text,
+            call_button_text=call_button_text,
         )
 
     now = pygame.time.get_ticks()
@@ -190,13 +208,11 @@ while running:
 
         # 判斷是否ALL-IN
         allin_this_round = (player_bets[i] > 0 and player_bets[i] == players[i].chips + player_bets[i] and players[i].chips == 0)
-        # 其實只要本輪下注等於原本籌碼+本輪下注且籌碼為0就代表ALL-IN
-        if player_bets[i] > 0 and players[i].chips == 0:
-            bet_display = "ALL-IN"
-        else:
-            bet_display = f"{player_bets[i]}"
 
+        # 顯示手牌下注額
+        bet_display = f"{player_bets[i]}"
         bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
+
         # 置中顯示下注額
         bet_text_x = start_x + (len(hand) * 80 - bet_text.get_width()) // 2
         if i == 0:
@@ -311,12 +327,19 @@ while running:
             big_blind_amount = 10
             player_bets = [0, 0]
             bet = 0
+
+            # 重設玩家籌碼
+            for player in players:
+                if player.chips == 0:
+                    player.chips = Chips.chips
+
             if players[big_blind_player].chips >= big_blind_amount:
                 players[big_blind_player].chips -= big_blind_amount
                 player_bets[big_blind_player] = big_blind_amount
                 bet = big_blind_amount
             current_player = 1 - big_blind_player
             last_raise_amount = big_blind_amount
+            last_actions = ["", ""]
 
     # 行動
     if action and not pending_next_stage:
@@ -338,18 +361,28 @@ while running:
 
         elif action == PlayerAction.CALL_OR_CHECK:
             max_bet = max(player_bets)
+            min_bet = min(player_bets)
+            # 只有兩人時，判斷是否有超額下注
             if player_bets[current_player] < max_bet:
-                last_actions[current_player] = "CALL"
-                # CALL
                 call_amount = max_bet - player_bets[current_player]
-                if players[current_player].chips >= call_amount:
-                    players[current_player].chips -= call_amount
-                    player_bets[current_player] += call_amount
-                else:
-                    # 不夠CALL就ALL IN
+                # 如果call方籌碼不足，則只跟到自己籌碼
+                if players[current_player].chips <= call_amount:
+                    # 計算超過的籌碼
+                    over_bet = (player_bets[1 - current_player] - (players[current_player].chips + player_bets[current_player]))
+                    if over_bet > 0:
+                        # 把超過的籌碼退還給下注方
+                        player_bets[1 - current_player] -= over_bet
+                        players[1 - current_player].chips += over_bet
+                    # ALL-IN
                     player_bets[current_player] += players[current_player].chips
                     players[current_player].chips = 0
-            # CHECK
+                    last_actions[current_player] = "ALL-IN"
+                    showed_hands = True  # 立即攤牌
+                else:
+                    # 正常CALL
+                    players[current_player].chips -= call_amount
+                    player_bets[current_player] += call_amount
+                    last_actions[current_player] = "CALL"
             else:
                 last_actions[current_player] = "CHECK"
             last_actions[1 - current_player] = ""
@@ -368,7 +401,9 @@ while running:
             if display_raise_input.isdigit():
                 raise_amount = int(display_raise_input)
                 if min_raise_amount <= raise_amount <= max_raise:
-                    if max(player_bets) == 0:
+                    if raise_amount == max_raise:
+                        last_actions[current_player] = "ALL-IN"
+                    elif max(player_bets) == 0:
                         last_actions[current_player] = "BET"
                     else:
                         last_actions[current_player] = "RAISE"
@@ -403,7 +438,8 @@ while running:
         actions_this_round = 0
         min_raise_amount = big_blind_amount
         raise_input_text = ""
-        last_actions = ["", ""]  # 重設行動紀錄
+        if not showed_hands:
+            last_actions = ["", ""]
         
         # 翻牌、轉牌、河牌都要重設 current_player 為小盲
         if game_stage == GameStage.PREFLOP:

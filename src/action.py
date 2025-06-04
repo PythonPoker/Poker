@@ -74,6 +74,7 @@ class PlayerAction(Enum):
         min_raise=10,
         max_raise=1000,
         raise_button_text = "RAISE",
+        call_button_text = "CALL",
     ):
         """
         在畫面上繪製行動按鈕
@@ -87,28 +88,24 @@ class PlayerAction(Enum):
         }
         labels = {
             PlayerAction.FOLD: "FOLD",
-            PlayerAction.CALL_OR_CHECK: "CALL",  # 預設
-            PlayerAction.BET_OR_RAISE: "RAISE",  # 預設
+            PlayerAction.CALL_OR_CHECK: call_button_text,  # 預設
+            PlayerAction.BET_OR_RAISE: raise_button_text,  # 預設
         }
-        # 動態決定 CALL_OR_CHECK 按鈕的文字
-        max_bet = max(player_bets)
-        if player_bets[current_player] < max_bet:
-            labels[PlayerAction.CALL_OR_CHECK] = "CALL"
-            colors[PlayerAction.CALL_OR_CHECK] = (50, 150, 200)  # 藍色
-        else:
-            labels[PlayerAction.CALL_OR_CHECK] = "CHECK"
-            colors[PlayerAction.CALL_OR_CHECK] = (180, 180, 180)  # 灰色
 
-        # 動態決定 BET_OR_RAISE 按鈕的文字
-        if max_bet == 0 and players[current_player].chips > 0:
-            labels[PlayerAction.BET_OR_RAISE] = "BET"
-            colors[PlayerAction.BET_OR_RAISE] = (255, 215, 0)  # 黃色
-        elif players[current_player].chips > 0:
-            labels[PlayerAction.BET_OR_RAISE] = "RAISE"
-            colors[PlayerAction.BET_OR_RAISE] = (50, 200, 100)  # 綠色
-        else:
-            labels[PlayerAction.BET_OR_RAISE] = "ALL IN"
-            colors[PlayerAction.BET_OR_RAISE] = (160, 0, 0)  # 深紅色
+        # 動態顏色：ALL-IN 顯示紅色
+        if call_button_text == "ALL-IN":
+            colors[PlayerAction.CALL_OR_CHECK] = (180, 0, 0)
+        elif call_button_text == "CALL":
+            colors[PlayerAction.CALL_OR_CHECK] = (50, 150, 200)
+        elif call_button_text == "CHECK":
+            colors[PlayerAction.CALL_OR_CHECK] = (180, 180, 180)
+
+        if raise_button_text == "ALL-IN":
+            colors[PlayerAction.BET_OR_RAISE] = (180, 0, 0)
+        elif raise_button_text == "BET":
+            colors[PlayerAction.BET_OR_RAISE] = (255, 215, 0)
+        elif raise_button_text == "RAISE":
+            colors[PlayerAction.BET_OR_RAISE] = (50, 200, 100)
 
         for action, rect in button_rects:
             pygame.draw.rect(screen, colors[action], rect)
