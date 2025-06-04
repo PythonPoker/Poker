@@ -408,14 +408,16 @@ while running:
                     else:
                         last_actions[current_player] = "RAISE"
                     last_actions[1 - current_player] = ""
-                    # 處理加注
-                    total_bet = to_call + raise_amount
-                    total_bet = min(total_bet, players[current_player].chips + player_bets[current_player])
-                    pay = total_bet - player_bets[current_player]
-                    if players[current_player].chips < pay:
-                        pay = players[current_player].chips
-                    players[current_player].chips -= pay
-                    player_bets[current_player] += pay
+                    # 正確處理加注：先補齊 call，再加 raise_amount
+                    pay = raise_amount
+                    # 不能超過玩家所有籌碼
+                    pay = min(pay, players[current_player].chips)
+                    # 實際要從玩家籌碼扣除的金額
+                    actual_pay = pay - player_bets[current_player]
+                    if players[current_player].chips < actual_pay:
+                        actual_pay = players[current_player].chips
+                    players[current_player].chips -= actual_pay
+                    player_bets[current_player] += actual_pay
                     current_player = 1 - current_player
                     raise_input_text = ""
 
