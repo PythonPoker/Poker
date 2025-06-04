@@ -194,21 +194,22 @@ while running:
     # Draw action buttons
     max_raise = players[current_player].chips
     is_allin_input = (
-        display_raise_input.isdigit() and 
-        int(display_raise_input) == max_raise
+        display_raise_input.isdigit() and int(display_raise_input) == max_raise
     )
     if max_bet == 0:
         raise_button_text = "BET" if not is_allin_input else "ALL-IN"
     else:
         raise_button_text = "RAISE" if not is_allin_input else "ALL-IN"
 
-    call_is_allin = (to_call > 0 and players[current_player].chips == to_call)
-    call_button_text = "ALL-IN" if call_is_allin else ("CHECK" if to_call == 0 else "CALL")
+    call_is_allin = to_call > 0 and players[current_player].chips == to_call
+    call_button_text = (
+        "ALL-IN" if call_is_allin else ("CHECK" if to_call == 0 else "CALL")
+    )
 
     only_allin_call = (
-        to_call == players[current_player].chips and
-        players[current_player].chips > 0 and
-        min_raise_amount > players[current_player].chips
+        to_call == players[current_player].chips
+        and players[current_player].chips > 0
+        and min_raise_amount > players[current_player].chips
     )
     filtered_button_rects = button_rects
     if only_allin_call:
@@ -222,7 +223,9 @@ while running:
         not pending_next_stage
         and not showed_result
         and game_stage != GameStage.SHOWDOWN
-        and not (current_player == 1 and bot_action_pending)  # 玩家2是bot且未行動時不顯示按鈕
+        and not (
+            current_player == 1 and bot_action_pending
+        )  # 玩家2是bot且未行動時不顯示按鈕
     ):
         draw_action_buttons(
             screen,
