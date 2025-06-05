@@ -93,6 +93,7 @@ bot_action_result = None
 
 # Main game loop
 running = True
+first_loop = True
 while running:
     clock.tick(game_setting["FPS"])
     button_rects = get_button_rects(game_setting["WIDTH"], game_setting["HEIGHT"])
@@ -101,14 +102,22 @@ while running:
     max_bet = max(player_bets)
     to_call = max_bet - player_bets[current_player]
     # 最小加注金額計算
-    if max_bet > 0 and player_bets[1 - current_player] > 0:
-        min_raise_amount = (
-            player_bets[1 - current_player] * 2 - player_bets[current_player]
-        )
-        min_raise_amount = max(min_raise_amount, big_blind_amount)  # 不低於大盲
+    if game_stage == GameStage.PREFLOP:
+        # preflop 最小加注為大盲下注額 + 大盲金額
+        min_raise_amount = max(big_blind_amount * 2, max_bet + big_blind_amount)
     else:
-        min_raise_amount = big_blind_amount
-
+        if max_bet > 0 and player_bets[1 - current_player] > 0:
+            min_raise_amount = (
+                player_bets[1 - current_player] * 2 - player_bets[current_player]
+            )
+            min_raise_amount = max(min_raise_amount, big_blind_amount)
+        else:
+            min_raise_amount = big_blind_amount
+            
+    # 預設加注金額為最小加注        
+    if first_loop:
+        raise_input_text = str(min_raise_amount)
+        first_loop = False
     display_raise_input = raise_input_text
 
     # --- Bot行動 ---
@@ -153,19 +162,17 @@ while running:
                 raise_input_rect = PlayerAction.get_raise_input_rect(button_rects)
                 if raise_input_rect and raise_input_rect.collidepoint(mouse_pos):
                     raise_input_active = True
-                    # 點擊輸入框時，如果目前是空的，填入預設
-                    if raise_input_text == "":
-                        raise_input_text = str(min_raise_amount)
                 else:
                     # 點擊框外
                     raise_input_active = False
-                    # 若玩家輸入的數字小於最小加注，則自動設為最小加注
-                    if raise_input_text.isdigit():
+                    # 若玩家輸入的內容為空字串，才自動補最小加注
+                    if raise_input_text == "":
+                        raise_input_text = str(min_raise_amount)
+                    elif raise_input_text.isdigit():
                         if int(raise_input_text) < min_raise_amount:
                             raise_input_text = str(min_raise_amount)
-                        # 否則保留玩家輸入
                     else:
-                        # 若輸入不是數字，設為預設
+                        # 若不是數字且不是空字串，補最小加注
                         raise_input_text = str(min_raise_amount)
 
             elif event.type == pygame.KEYDOWN and raise_input_active:
@@ -464,14 +471,20 @@ while running:
             max_bet = max(player_bets)
             to_call = max_bet - player_bets[current_player]
             # 最小加注金額計算
-            if max_bet > 0 and player_bets[1 - current_player] > 0:
-                min_raise_amount = (
-                    player_bets[1 - current_player] * 2 - player_bets[current_player]
-                )
-                min_raise_amount = max(min_raise_amount, big_blind_amount)
+            if game_stage == GameStage.PREFLOP:
+                # preflop 最小加注為大盲下注額 + 大盲金額
+                min_raise_amount = max(big_blind_amount * 2, max_bet + big_blind_amount)
             else:
-                min_raise_amount = big_blind_amount
+                if max_bet > 0 and player_bets[1 - current_player] > 0:
+                    min_raise_amount = (
+                        player_bets[1 - current_player] * 2 - player_bets[current_player]
+                    )
+                    min_raise_amount = max(min_raise_amount, big_blind_amount)
+                else:
+                    min_raise_amount = big_blind_amount
+                    
             max_raise = players[current_player].chips
+            # 按鈕顯示
             if display_raise_input.isdigit():
                 raise_amount = int(display_raise_input)
                 if min_raise_amount <= raise_amount <= max_raise:
