@@ -392,6 +392,7 @@ while running:
             players[1 - big_blind_player].set_big_blind(False)
             big_blind_amount = 10
             player_bets = [0, 0]
+            acted_this_round = [False, False]
             bet = 0
 
             # 重設玩家籌碼
