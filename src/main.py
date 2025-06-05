@@ -509,10 +509,19 @@ while running:
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
         if all(acted_this_round) and player_bets[0] == player_bets[1]:
-            pending_next_stage = True
-            next_stage_time = pygame.time.get_ticks()
-            if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
-                showed_hands = True  # 立即公開手牌
+            # preflop階段且大盲玩家還沒行動時，不進入下一階段
+            if (
+                game_stage == GameStage.PREFLOP
+                and acted_this_round[big_blind_player] == False
+            ):
+                # 換到大盲玩家行動
+                current_player = big_blind_player
+                acted_this_round[big_blind_player] = False
+            else:
+                pending_next_stage = True
+                next_stage_time = pygame.time.get_ticks()
+                if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
+                    showed_hands = True  # 立即公開手牌
 
     # 2秒後進入下個階段
     if (
@@ -528,6 +537,7 @@ while running:
         min_raise_amount = big_blind_amount
         raise_input_text = str(min_raise_amount)
         display_raise_input = raise_input_text
+
         if not showed_hands:
             last_actions = ["", ""]
 
