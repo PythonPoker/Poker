@@ -1,5 +1,6 @@
 from itertools import combinations
 from collections import Counter
+import pygame
 
 RANK_ORDER = "23456789TJQKA"
 RANK_VALUE = {r: i for i, r in enumerate(RANK_ORDER, 2)}
@@ -81,6 +82,8 @@ class PokerResult:
     @staticmethod
     def best_five(hand7):
         """從7張牌中選出最大牌型的5張"""
+        if not hand7 or len(hand7) < 5:
+            return []
         return max(
             (PokerResult.hand_rank(list(combo)), combo)
             for combo in combinations(hand7, 5)
@@ -100,3 +103,82 @@ class PokerResult:
 
     def get_hand_type_name(rank_tuple):
         return HAND_TYPE_NAME.get(rank_tuple[0], "未知")
+
+    @staticmethod
+    def showdown_result(
+        hands,
+        community_cards,
+        players,
+        pot,
+        showed_hands,
+        showed_result,
+        showdown_time,
+        winner_text,
+        result_time,
+        pot_given,
+        pot_give_time,
+        Chips,
+        font,
+        game_setting,
+        screen,
+    ):
+        now = pygame.time.get_ticks()
+        # 先公開手牌
+        if not showed_hands:
+            showdown_time = now
+            showed_hands = True
+            pot_given = False
+            pot_give_time = None
+        elif showed_hands and not showed_result:
+            # 等3秒後顯示勝負
+            if (
+                showdown_time
+                and now - showdown_time > 3000
+                and len(hands[0]) > 0
+                and len(hands[1]) > 0
+                and len(community_cards) >= 3
+            ):
+                result = PokerResult.compare_players(
+                    hands[0], hands[1], community_cards
+                )
+                if result == 1:
+                    winner_text = "P1 WINS"
+                elif result == -1:
+                    winner_text = "P2 WINS"
+                else:
+                    winner_text = "DRAW"
+                showed_result = True
+                result_time = now
+        elif showed_result and winner_text:
+            # 顯示勝負
+            text_surface = font.render(winner_text, True, (255, 255, 0))
+            text_rect = text_surface.get_rect(
+                center=(
+                    game_setting["WIDTH"] // 2,
+                    game_setting["HEIGHT"] // 2 + game_setting["CARD_HEIGHT"],
+                )
+            )
+            screen.blit(text_surface, text_rect)
+            # 2秒後加pot到勝者，只加一次
+            if not pot_given and result_time and now - result_time > 2000:
+                if winner_text == "P1 WINS":
+                    players[0].chips += pot
+                elif winner_text == "P2 WINS":
+                    players[1].chips += pot
+                elif winner_text == "DRAW":
+                    players[0].chips += pot // 2
+                    players[1].chips += pot // 2
+                pot = 0
+                pot_given = True
+                pot_give_time = now
+
+        return (
+            showed_hands,
+            showed_result,
+            showdown_time,
+            winner_text,
+            result_time,
+            pot_given,
+            pot_give_time,
+            pot,
+        )

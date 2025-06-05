@@ -80,12 +80,12 @@ while running:
     max_bet = max(player_bets)
     to_call = max_bet - player_bets[current_player]
     # 最小加注金額計算
-    if game_stage == GameStage.PREFLOP:
-        min_raise_amount = big_blind_amount
-        min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
-    else:
-        min_raise_amount = last_raise_amount
-        min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
+    max_bet = max(player_bets)
+    to_call = max_bet - player_bets[current_player]
+    min_raise_amount = Chips.get_min_raise_amount(
+        game_stage, big_blind_amount, last_raise_amount
+    )
+    min_total_bet = Chips.get_min_total_bet(max_bet, min_raise_amount)
 
     # 預設加注金額為最小加注
     if first_loop:
@@ -303,48 +303,34 @@ while running:
             dot_y = y + game_setting["CARD_HEIGHT"] // 2
             pygame.draw.circle(screen, (255, 215, 0), (dot_x, dot_y), dot_radius)
 
-    # SHOWDOWN階段：先公開手牌，3秒後顯示勝負，再2秒後自動開新局
+    # 顯示勝負結果
     if game_stage == GameStage.SHOWDOWN:
-        if not showed_hands:
-            showdown_time = pygame.time.get_ticks()
-            showed_hands = True
-            pot_given = False
-            pot_give_time = None
-        elif showed_hands and not showed_result:
-            # 等3秒後顯示勝負
-            if showdown_time and pygame.time.get_ticks() - showdown_time > 3000:
-                result = compare_players(hands[0], hands[1], community_cards)
-                if result == 1:
-                    winner_text = "P1 WINS"
-                elif result == -1:
-                    winner_text = "P2 WINS"
-                else:
-                    winner_text = "DRAW"
-                showed_result = True
-                result_time = pygame.time.get_ticks()
-        elif showed_result and winner_text:
-            # 顯示勝負
-            text_surface = font.render(winner_text, True, (255, 255, 0))
-            text_rect = text_surface.get_rect(
-                center=(
-                    game_setting["WIDTH"] // 2,
-                    game_setting["HEIGHT"] // 2 + game_setting["CARD_HEIGHT"],
-                )
-            )
-            screen.blit(text_surface, text_rect)
-            now = pygame.time.get_ticks()
-            # 2秒後加pot到勝者，只加一次
-            if not pot_given and result_time and now - result_time > 2000:
-                if winner_text == "P1 WINS":
-                    players[0].chips += pot
-                elif winner_text == "P2 WINS":
-                    players[1].chips += pot
-                elif winner_text == "DRAW":
-                    players[0].chips += pot // 2
-                    players[1].chips += pot // 2
-                pot = 0
-                pot_given = True
-                pot_give_time = now
+        (
+            showed_hands,
+            showed_result,
+            showdown_time,
+            winner_text,
+            result_time,
+            pot_given,
+            pot_give_time,
+            pot,
+        ) = PokerResult.showdown_result(
+            hands,
+            community_cards,
+            players,
+            pot,
+            showed_hands,
+            showed_result,
+            showdown_time,
+            winner_text,
+            result_time,
+            pot_given,
+            pot_give_time,
+            Chips,
+            font,
+            game_setting,
+            screen,
+        )
 
         # pot給出後再等2秒才開新局
         if pot_given and pot_give_time and now - pot_give_time > 2000:
