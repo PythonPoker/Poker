@@ -12,6 +12,7 @@ from game_stage import GameStage
 from game_setting import load_game_settings
 from bot import PokerBot
 from game_flow import GameFlow
+from action_handler import handle_action
 
 # Initialize Pygame and create a window
 pygame.init()
@@ -80,16 +81,9 @@ while running:
     to_call = max_bet - player_bets[current_player]
     # 最小加注金額計算
     if game_stage == GameStage.PREFLOP:
-        # preflop 最小加注為大盲下注額 + 大盲金額
-        min_raise_amount = max(big_blind_amount * 2, max_bet + big_blind_amount)
+        min_raise_amount = max(big_blind_amount, max_bet - player_bets[current_player] + big_blind_amount)
     else:
-        if max_bet > 0 and player_bets[1 - current_player] > 0:
-            min_raise_amount = (
-                player_bets[1 - current_player] * 2 - player_bets[current_player]
-            )
-            min_raise_amount = max(min_raise_amount, big_blind_amount)
-        else:
-            min_raise_amount = big_blind_amount
+        min_raise_amount = max(big_blind_amount, max_bet - player_bets[current_player] + last_raise_amount)
 
     # 預設加注金額為最小加注
     if first_loop:
@@ -388,123 +382,45 @@ while running:
 
     # 行動
     if action and not pending_next_stage:
-        actions_this_round += 1
-        acted_this_round[current_player] = True
-        prev_player = current_player  # 保存當前玩家
-        if action == PlayerAction.FOLD:
-            last_actions[current_player] = "FOLD"
-            last_actions[1 - current_player] = ""
-            winner = 1 - current_player
-            winner_text = f"P{winner+1} WINS"
-            players[winner].chips += pot + sum(player_bets)
-            pot = 0
-            bet = 0
-            player_bets = [0, 0]
-            showed_result = True
-            result_time = pygame.time.get_ticks()
-            pending_next_stage = False
-            actions_this_round = 0
-            game_stage = GameStage.SHOWDOWN
-            showed_hands = True
-            showdown_time = pygame.time.get_ticks()
-            continue  # 跳過後續行動處理
+        result = handle_action(
+            action,
+            players,
+            player_bets,
+            last_actions,
+            acted_this_round,
+            current_player,
+            game_stage,
+            pot,
+            bet,
+            raise_input_text,
+            min_raise_amount,
+            display_raise_input,
+            big_blind_player,
+            showed_hands,
+            showed_result,
+            result_time,
+            pending_next_stage,
+            actions_this_round,
+            showdown_time,
+        )
+        actions_this_round = result["actions_this_round"]
+        acted_this_round = result["acted_this_round"]
+        current_player = result["current_player"]
+        last_actions = result["last_actions"]
+        player_bets = result["player_bets"]
+        pot = result["pot"]
+        bet = result["bet"]
+        showed_result = result["showed_result"]
+        result_time = result["result_time"]
+        pending_next_stage = result["pending_next_stage"]
+        game_stage = result["game_stage"]
+        showed_hands = result["showed_hands"]
+        showdown_time = result["showdown_time"]
+        raise_input_text = result["raise_input_text"]
+        winner_text = result["winner_text"] if result["winner_text"] else winner_text
 
-        elif action == PlayerAction.CALL_OR_CHECK:
-            max_bet = max(player_bets)
-            min_bet = min(player_bets)
-            # 只有兩人時，判斷是否有超額下注
-            if player_bets[current_player] < max_bet:
-                call_amount = max_bet - player_bets[current_player]
-                # 如果call方籌碼不足，則只跟到自己籌碼
-                if players[current_player].chips <= call_amount:
-                    # 計算超過的籌碼
-                    over_bet = player_bets[1 - current_player] - (
-                        players[current_player].chips + player_bets[current_player]
-                    )
-                    if over_bet > 0:
-                        # 把超過的籌碼退還給下注方
-                        player_bets[1 - current_player] -= over_bet
-                        players[1 - current_player].chips += over_bet
-                    # ALL-IN
-                    player_bets[current_player] += players[current_player].chips
-                    players[current_player].chips = 0
-                    last_actions[current_player] = "ALL-IN"
-                    showed_hands = True  # 立即攤牌
-                else:
-                    # 正常CALL
-                    players[current_player].chips -= call_amount
-                    player_bets[current_player] += call_amount
-                    last_actions[current_player] = "CALL"
-            else:
-                last_actions[current_player] = "CHECK"
-            last_actions[1 - current_player] = ""
-
-            # 如果是小盲玩家，則換到大盲玩家行動
-            if game_stage == GameStage.PREFLOP:
-                current_player = 1 - current_player
-            else:
-                # 如果還沒到兩次行動，換到另一位玩家
-                current_player = 1 - current_player
-
-        elif action == PlayerAction.BET_OR_RAISE:
-            max_bet = max(player_bets)
-            to_call = max_bet - player_bets[current_player]
-            # 最小加注金額計算
-            if game_stage == GameStage.PREFLOP:
-                # preflop 最小加注為大盲下注額 + 大盲金額
-                min_raise_amount = max(big_blind_amount * 2, max_bet + big_blind_amount)
-            else:
-                if max_bet > 0 and player_bets[1 - current_player] > 0:
-                    min_raise_amount = (
-                        player_bets[1 - current_player] * 2
-                        - player_bets[current_player]
-                    )
-                    min_raise_amount = max(min_raise_amount, big_blind_amount)
-                else:
-                    min_raise_amount = big_blind_amount
-
-            max_raise = players[current_player].chips
-            # 按鈕顯示
-            if display_raise_input.isdigit():
-                raise_amount = int(display_raise_input)
-                if min_raise_amount <= raise_amount <= max_raise:
-                    if raise_amount == max_raise:
-                        last_actions[current_player] = "ALL-IN"
-                    elif max(player_bets) == 0:
-                        last_actions[current_player] = "BET"
-                    else:
-                        last_actions[current_player] = "RAISE"
-                    last_actions[1 - current_player] = ""
-                    pay = raise_amount
-                    # 不能超過玩家所有籌碼
-                    pay = min(pay, players[current_player].chips)
-                    # 實際要從玩家籌碼扣除的金額
-                    actual_pay = pay - player_bets[current_player]
-                    if players[current_player].chips < actual_pay:
-                        actual_pay = players[current_player].chips
-                    players[current_player].chips -= actual_pay
-                    player_bets[current_player] += actual_pay
-                    current_player = 1 - current_player
-                    raise_input_text = ""
-
-        # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-        if all(acted_this_round) and player_bets[0] == player_bets[1]:
-            # preflop階段且大盲玩家還沒行動時，不進入下一階段
-            if (
-                game_stage == GameStage.PREFLOP
-                and acted_this_round[big_blind_player] == False
-            ):
-                # 換到大盲玩家行動
-                current_player = big_blind_player
-                acted_this_round[big_blind_player] = False
-            else:
-                pending_next_stage = True
-                next_stage_time = pygame.time.get_ticks()
-                if (
-                    any(p.chips == 0 for p in players)
-                    and game_stage != GameStage.SHOWDOWN
-                ):
-                    showed_hands = True  # 立即公開手牌
+        if result.get("continue_flag"):
+            continue
 
     # 2秒後進入下個階段
     if (
