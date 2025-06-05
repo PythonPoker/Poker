@@ -20,7 +20,8 @@ class Chips:
 
     def get_min_raise_amount(game_stage, big_blind_amount, last_raise_amount):
         # PREFLOP 時最小加注為大盲，其餘為上一輪加注額
-        if game_stage.name == "PREFLOP":
+        stage = game_stage.name if hasattr(game_stage, "name") else str(game_stage)
+        if stage == "PREFLOP":
             return big_blind_amount
         else:
             return last_raise_amount

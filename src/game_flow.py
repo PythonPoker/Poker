@@ -106,3 +106,58 @@ class GameFlow:
             "bot_action_time": bot_action_time,
             "bot_action_result": bot_action_result,
         }
+
+    @staticmethod
+    def reset_game(deck, players, Chips, big_blind_player, big_blind_amount):
+        deck = Deck()
+        deck.shuffle()
+        hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
+        community_cards = []
+        deal_index = 0
+        game_stage = GameStage.PREFLOP
+        showed_result = False
+        showed_hands = False
+        winner_text = ""
+        result_time = None
+        showdown_time = None
+        pot_given = False
+        pot_give_time = None
+        big_blind_player = 1 - big_blind_player
+        players[big_blind_player].set_big_blind(True)
+        players[1 - big_blind_player].set_big_blind(False)
+        big_blind_amount = 10
+        player_bets = [0, 0]
+        acted_this_round = [False, False]
+        bet = 0
+        for player in players:
+            if player.chips == 0:
+                player.chips = Chips.chips
+        if players[big_blind_player].chips >= big_blind_amount:
+            players[big_blind_player].chips -= big_blind_amount
+            player_bets[big_blind_player] = big_blind_amount
+            bet = big_blind_amount
+        current_player = 1 - big_blind_player
+        last_raise_amount = big_blind_amount
+        last_actions = ["", ""]
+        return (
+            deck,
+            hands,
+            community_cards,
+            deal_index,
+            game_stage,
+            showed_result,
+            showed_hands,
+            winner_text,
+            result_time,
+            showdown_time,
+            pot_given,
+            pot_give_time,
+            big_blind_player,
+            big_blind_amount,
+            player_bets,
+            acted_this_round,
+            bet,
+            current_player,
+            last_raise_amount,
+            last_actions,
+        )
