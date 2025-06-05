@@ -33,21 +33,39 @@ def handle_action(
 
     if action == PlayerAction.FOLD:
         last_actions[current_player] = "FOLD"
-        last_actions[1 - current_player] = ""
-        winner = 1 - current_player
-        winner_text = f"P{winner+1} WINS"
-        players[winner].chips += pot + sum(player_bets)
-        pot = 0
-        bet = 0
-        player_bets = [0, 0]
-        showed_result = True
-        result_time = pygame.time.get_ticks()
-        pending_next_stage = False
-        actions_this_round = 0
+        other_player = 1 - current_player
         game_stage = GameStage.SHOWDOWN
         showed_hands = True
-        showdown_time = pygame.time.get_ticks()
-        continue_flag = True
+        showed_result = False
+        pending_next_stage = False
+        result_time = None
+        showdown_time = None
+        winner_text = f"P{other_player+1} WINS"
+        pot += player_bets[0] + player_bets[1]
+        players[other_player].chips += pot
+        pot = 0
+        pot_given = True
+        pot_give_time = pygame.time.get_ticks()
+        return {
+            "actions_this_round": actions_this_round,
+            "acted_this_round": acted_this_round,
+            "current_player": current_player,
+            "last_actions": last_actions,
+            "player_bets": [0, 0],
+            "pot": pot,
+            "bet": bet,
+            "showed_result": showed_result,
+            "result_time": result_time,
+            "pending_next_stage": pending_next_stage,
+            "game_stage": game_stage,
+            "showed_hands": showed_hands,
+            "showdown_time": showdown_time,
+            "raise_input_text": raise_input_text,
+            "winner_text": winner_text,
+            "continue_flag": False,
+            "pot_given": pot_given,
+            "pot_give_time": pot_give_time,
+        }
 
     elif action == PlayerAction.CALL_OR_CHECK:
         max_bet = max(player_bets)

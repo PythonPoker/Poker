@@ -130,8 +130,12 @@ class PokerResult:
             pot_given = False
             pot_give_time = None
         elif showed_hands and not showed_result:
-            # 等3秒後顯示勝負
-            if (
+            # 如果 winner_text 已經有內容（如棄牌），直接顯示
+            if winner_text:
+                showed_result = True
+                result_time = now
+            # 否則等3秒後自動判斷勝負
+            elif (
                 showdown_time
                 and now - showdown_time > 3000
                 and len(hands[0]) > 0
@@ -149,6 +153,7 @@ class PokerResult:
                     winner_text = "DRAW"
                 showed_result = True
                 result_time = now
+
         elif showed_result and winner_text:
             # 顯示勝負
             text_surface = font.render(winner_text, True, (255, 255, 0))

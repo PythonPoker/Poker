@@ -405,6 +405,8 @@ while running:
         showdown_time = result["showdown_time"]
         raise_input_text = result["raise_input_text"]
         winner_text = result["winner_text"] if result["winner_text"] else winner_text
+        pot_given = result.get("pot_given", pot_given)
+        pot_give_time = result.get("pot_give_time", pot_give_time)
 
         if result.get("continue_flag"):
             continue
