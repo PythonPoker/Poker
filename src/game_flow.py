@@ -6,6 +6,7 @@ from game_stage import GameStage
 from bot import PokerBot
 from action import PlayerAction
 
+
 class GameFlow:
     @staticmethod
     def init_game(game_setting):

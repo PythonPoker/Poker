@@ -2,6 +2,7 @@ from action import PlayerAction
 from game_stage import GameStage
 import pygame
 
+
 def handle_action(
     action,
     players,
@@ -86,7 +87,9 @@ def handle_action(
             raise_amount = int(display_raise_input)
             # 這次要補的錢
             total_bet = raise_amount
-            min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
+            min_total_bet = (
+                max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
+            )
             # 判斷是否達到最小加注
             if total_bet >= min_total_bet and total_bet <= max_bet + max_raise:
                 pay = total_bet - player_bets[current_player]
@@ -114,10 +117,7 @@ def handle_action(
         else:
             pending_next_stage = True
             result_time = pygame.time.get_ticks()
-            if (
-                any(p.chips == 0 for p in players)
-                and game_stage != GameStage.SHOWDOWN
-            ):
+            if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
                 showed_hands = True  # 立即公開手牌
 
     return {

@@ -81,13 +81,15 @@ while running:
     to_call = max_bet - player_bets[current_player]
     # 最小加注金額計算
     if game_stage == GameStage.PREFLOP:
-        min_raise_amount = max(big_blind_amount, max_bet - player_bets[current_player] + big_blind_amount)
+        min_raise_amount = big_blind_amount
+        min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
     else:
-        min_raise_amount = max(big_blind_amount, max_bet - player_bets[current_player] + last_raise_amount)
+        min_raise_amount = last_raise_amount
+        min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
 
     # 預設加注金額為最小加注
     if first_loop:
-        raise_input_text = str(min_raise_amount)
+        raise_input_text = str(min_total_bet)
         first_loop = False
     display_raise_input = raise_input_text
 
@@ -138,13 +140,13 @@ while running:
                     raise_input_active = False
                     # 若玩家輸入的內容為空字串，才自動補最小加注
                     if raise_input_text == "":
-                        raise_input_text = str(min_raise_amount)
+                        raise_input_text = str(min_total_bet)
                     elif raise_input_text.isdigit():
-                        if int(raise_input_text) < min_raise_amount:
-                            raise_input_text = str(min_raise_amount)
+                        if int(raise_input_text) < min_total_bet:
+                            raise_input_text = str(min_total_bet)
                     else:
                         # 若不是數字且不是空字串，補最小加注
-                        raise_input_text = str(min_raise_amount)
+                        raise_input_text = str(min_total_bet)
 
             elif event.type == pygame.KEYDOWN and raise_input_active:
                 raise_input_text = handle_raise_input(
@@ -412,6 +414,8 @@ while running:
         bet = result["bet"]
         showed_result = result["showed_result"]
         result_time = result["result_time"]
+        if not pending_next_stage and result["pending_next_stage"]:
+            next_stage_time = pygame.time.get_ticks()
         pending_next_stage = result["pending_next_stage"]
         game_stage = result["game_stage"]
         showed_hands = result["showed_hands"]
@@ -440,25 +444,16 @@ while running:
         if not showed_hands:
             last_actions = ["", ""]
 
-        # 翻牌、轉牌、河牌都要重設 current_player 為小盲
-        if game_stage == GameStage.PREFLOP:
-            for _ in range(3):
-                community_cards.append(deck.cards.pop(0))
-            game_stage = GameStage.FLOP
-            current_player = big_blind_player
-        elif game_stage == GameStage.FLOP:
-            community_cards.append(deck.cards.pop(0))
-            game_stage = GameStage.TURN
-            current_player = big_blind_player
-        elif game_stage == GameStage.TURN:
-            community_cards.append(deck.cards.pop(0))
-            game_stage = GameStage.RIVER
-            current_player = big_blind_player
-        elif game_stage == GameStage.RIVER:
-            game_stage = GameStage.SHOWDOWN
+        # 使用 GameStage.advance_stage 進入下一階段
+        game_stage, community_cards, current_player = GameStage.advance_stage(
+            game_stage, deck, community_cards, big_blind_player
+        )
+
+        if game_stage == GameStage.SHOWDOWN:
             showed_result = False
             showed_hands = False
             showdown_time = None
+
         pending_next_stage = False
         next_stage_time = None
 
