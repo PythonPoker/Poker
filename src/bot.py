@@ -2,6 +2,7 @@ import random
 from card import Deck
 from result import PokerResult
 
+
 class PokerBot:
     def __init__(self, player_index):
         self.player_index = player_index
@@ -52,7 +53,9 @@ class PokerBot:
         chips = players[self.player_index].chips
 
         # 蒙地卡羅估算勝率
-        win_rate = self.estimate_win_rate(hand, community_cards, hands, num_simulations=300)
+        win_rate = self.estimate_win_rate(
+            hand, community_cards, hands, num_simulations=300
+        )
 
         # 決策邏輯（可依需求調整閾值）
         if to_call == 0:

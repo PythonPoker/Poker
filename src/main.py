@@ -113,8 +113,8 @@ while running:
             min_raise_amount = max(min_raise_amount, big_blind_amount)
         else:
             min_raise_amount = big_blind_amount
-            
-    # 預設加注金額為最小加注        
+
+    # 預設加注金額為最小加注
     if first_loop:
         raise_input_text = str(min_raise_amount)
         first_loop = False
@@ -466,7 +466,7 @@ while running:
                 current_player = 1 - current_player
             else:
                 # 如果還沒到兩次行動，換到另一位玩家
-                 current_player = 1 - current_player
+                current_player = 1 - current_player
 
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
@@ -478,12 +478,13 @@ while running:
             else:
                 if max_bet > 0 and player_bets[1 - current_player] > 0:
                     min_raise_amount = (
-                        player_bets[1 - current_player] * 2 - player_bets[current_player]
+                        player_bets[1 - current_player] * 2
+                        - player_bets[current_player]
                     )
                     min_raise_amount = max(min_raise_amount, big_blind_amount)
                 else:
                     min_raise_amount = big_blind_amount
-                    
+
             max_raise = players[current_player].chips
             # 按鈕顯示
             if display_raise_input.isdigit():
@@ -521,7 +522,10 @@ while running:
             else:
                 pending_next_stage = True
                 next_stage_time = pygame.time.get_ticks()
-                if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
+                if (
+                    any(p.chips == 0 for p in players)
+                    and game_stage != GameStage.SHOWDOWN
+                ):
                     showed_hands = True  # 立即公開手牌
 
     # 2秒後進入下個階段
