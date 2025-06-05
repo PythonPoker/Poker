@@ -129,6 +129,7 @@ while running:
                 players[1].chips,
                 to_call,
                 game_stage,
+                hands=hands,  # 傳入手牌以便bot計算
             )
             bot_action_pending = True
         elif pygame.time.get_ticks() - bot_action_time >= 2000:
@@ -403,6 +404,7 @@ while running:
     if action and not pending_next_stage:
         actions_this_round += 1
         acted_this_round[current_player] = True
+        prev_player = current_player  # 保存當前玩家
         if action == PlayerAction.FOLD:
             last_actions[current_player] = "FOLD"
             last_actions[1 - current_player] = ""
