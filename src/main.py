@@ -67,6 +67,7 @@ big_blind_player = random.randint(0, 1)
 current_player = 1 - big_blind_player
 players[big_blind_player].set_big_blind(True)
 players[1 - big_blind_player].set_big_blind(False)
+acted_this_round = [False, False]  # 記錄每位玩家是否已行動
 
 # 大盲下注10
 bet = 0
@@ -401,6 +402,7 @@ while running:
     # 行動
     if action and not pending_next_stage:
         actions_this_round += 1
+        acted_this_round[current_player] = True
         if action == PlayerAction.FOLD:
             last_actions[current_player] = "FOLD"
             last_actions[1 - current_player] = ""
@@ -454,8 +456,7 @@ while running:
                 current_player = 1 - current_player
             else:
                 # 如果還沒到兩次行動，換到另一位玩家
-                if actions_this_round < 2:
-                    current_player = 1 - current_player
+                 current_player = 1 - current_player
 
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
@@ -492,7 +493,7 @@ while running:
                     raise_input_text = ""
 
         # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-        if actions_this_round >= 2 and player_bets[0] == player_bets[1]:
+        if all(acted_this_round) and player_bets[0] == player_bets[1]:
             pending_next_stage = True
             next_stage_time = pygame.time.get_ticks()
             if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
@@ -504,10 +505,11 @@ while running:
         and next_stage_time
         and pygame.time.get_ticks() - next_stage_time > 2000
     ):
+        actions_this_round = 0
+        acted_this_round = [False, False]
         pot += player_bets[0] + player_bets[1]
         player_bets = [0, 0]
         bet = 0
-        actions_this_round = 0
         min_raise_amount = big_blind_amount
         raise_input_text = ""
         if not showed_hands:
