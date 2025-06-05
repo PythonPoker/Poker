@@ -375,6 +375,7 @@ while running:
 
         # pot給出後再等2秒才開新局
         if pot_given and pot_give_time and now - pot_give_time > 2000:
+            deck = Deck()
             deck.shuffle()
             hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
             community_cards.clear()
