@@ -526,7 +526,8 @@ while running:
         player_bets = [0, 0]
         bet = 0
         min_raise_amount = big_blind_amount
-        raise_input_text = ""
+        raise_input_text = str(min_raise_amount)
+        display_raise_input = raise_input_text
         if not showed_hands:
             last_actions = ["", ""]
 
