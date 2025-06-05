@@ -1,9 +1,9 @@
 import pygame
+import random
+import os
 from player import Player, all_sprites
 from pygame.sprite import Sprite
 from card import Deck
-import random
-import os
 from enum import Enum, auto
 from action import PlayerAction
 from result import PokerResult
@@ -11,6 +11,7 @@ from chips import Chips
 from game_stage import GameStage
 from game_setting import load_game_settings
 from bot import PokerBot
+from game_flow import GameFlow
 
 # Initialize Pygame and create a window
 pygame.init()
@@ -19,77 +20,53 @@ print(game_setting)
 screen = pygame.display.set_mode((game_setting["WIDTH"], game_setting["HEIGHT"]))
 pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 36)
+game_state = GameFlow.init_game(game_setting)
 # Create a player instance
-deck = Deck()
-deck.shuffle()
-hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
-card_images = deck.load_card_images()
+deck = game_state["deck"]
+hands = game_state["hands"]
+card_images = game_state["card_images"]
+showed_hands = game_state["showed_hands"]
+showed_result = game_state["showed_result"]
+showdown_time = game_state["showdown_time"]
+handle_raise_input = game_state["handle_raise_input"]
+raise_input_text = game_state["raise_input_text"]
+raise_input_active = game_state["raise_input_active"]
+pot_given = game_state["pot_given"]
+pot_give_time = game_state["pot_give_time"]
+game_stage = game_state["game_stage"]
+next_stage_time = game_state["next_stage_time"]
+pending_next_stage = game_state["pending_next_stage"]
+community_cards = game_state["community_cards"]
+deal_index = game_state["deal_index"]
+winner_text = game_state["winner_text"]
+result_time = game_state["result_time"]
+player_bets = game_state["player_bets"]
+waiting_for_action = game_state["waiting_for_action"]
+actions_this_round = game_state["actions_this_round"]
+last_actions = game_state["last_actions"]
+pot = game_state["pot"]
+players = game_state["players"]
+bot = game_state["bot"]
+big_blind_player = game_state["big_blind_player"]
+current_player = game_state["current_player"]
+acted_this_round = game_state["acted_this_round"]
+bet = game_state["bet"]
+big_blind_amount = game_state["big_blind_amount"]
+last_raise_amount = game_state["last_raise_amount"]
+player_positions = game_state["player_positions"]
+bot_action_pending = game_state["bot_action_pending"]
+bot_action_time = game_state["bot_action_time"]
+bot_action_result = game_state["bot_action_result"]
+
 draw_action_buttons = PlayerAction.draw_action_buttons
 get_button_rects = PlayerAction.get_button_rects
-showed_hands = False
-showed_result = False
-showdown_time = None
 handle_raise_input = PlayerAction.handle_raise_input
-raise_input_text = ""
-raise_input_active = False
-
-pot_given = False
-pot_give_time = None
-
-game_stage = GameStage.PREFLOP
-next_stage_time = None
-pending_next_stage = False
-
-community_cards = []
-deal_index = 0
-winner_text = ""
-result_time = None
-
-player_bets = [0, 0]  # 記錄每位玩家本輪下注額
-waiting_for_action = False
-actions_this_round = 0
-last_actions = ["", ""]  # 記錄每位玩家最後的行動
-
-font = pygame.font.SysFont(None, 36)
-
 last_mouse_check = pygame.time.get_ticks()
-
 compare_players = PokerResult.compare_players
 hand_rank = PokerResult.hand_rank
 get_hand_type_name = PokerResult.get_hand_type_name
 best_five = PokerResult.best_five
-
-pot = 0
-
-players = [Player(0), Player(1)]
-bot = PokerBot(1)  # 玩家2是bot
-big_blind_player = random.randint(0, 1)
-current_player = 1 - big_blind_player
-players[big_blind_player].set_big_blind(True)
-players[1 - big_blind_player].set_big_blind(False)
-acted_this_round = [False, False]  # 記錄每位玩家是否已行動
-
-# 大盲下注10
-bet = 0
-big_blind_amount = 10
-last_raise_amount = big_blind_amount
-
-if players[big_blind_player].chips >= big_blind_amount:
-    players[big_blind_player].chips -= big_blind_amount
-    player_bets[big_blind_player] = big_blind_amount
-    bet = big_blind_amount
-
-player_positions = [
-    (
-        game_setting["WIDTH"] // 2 - (len(hands[0]) * 80) // 2,
-        game_setting["HEIGHT"] - game_setting["CARD_HEIGHT"] - 40,
-    ),  # 玩家1：下中
-    (game_setting["WIDTH"] // 2 - (len(hands[1]) * 80) // 2, 40),  # 玩家2：上中
-]
-
-bot_action_pending = False
-bot_action_time = 0
-bot_action_result = None
 
 # Main game loop
 running = True
