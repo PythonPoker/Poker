@@ -79,13 +79,13 @@ while running:
 
     max_bet = max(player_bets)
     to_call = max_bet - player_bets[current_player]
-    # 最小加注金額計算
-    max_bet = max(player_bets)
-    to_call = max_bet - player_bets[current_player]
     min_raise_amount = Chips.get_min_raise_amount(
         game_stage, big_blind_amount, last_raise_amount
     )
     min_total_bet = Chips.get_min_total_bet(max_bet, min_raise_amount)
+
+    # 先計算 any_allin
+    any_allin = any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players))
 
     # 預設加注金額為最小加注
     if first_loop:
@@ -93,37 +93,73 @@ while running:
         first_loop = False
     display_raise_input = raise_input_text
 
-    # --- Bot行動 ---
+    # --- Bot行動（ALL-IN 狀態下也允許 bot 行動）---
     if (
         current_player == 1
         and not showed_result
-        and not pending_next_stage
         and game_stage != GameStage.SHOWDOWN
+        and players[1].chips > 0  # Only act if bot has chips left
+        and (not pending_next_stage or any_allin)
+        and not (players[0].chips == 0 and players[1].chips == 0)
     ):
+        current_time = pygame.time.get_ticks()
+        
+        # Check if player has gone ALL-IN - force the bot to call
+        player_all_in = players[0].chips == 0 and player_bets[0] > 0
+        
         if not bot_action_pending:
-            bot_action_time = pygame.time.get_ticks()
-            bot_action_result = bot.act(
-                hands[1],
-                community_cards,
-                player_bets,
-                players,
-                min_raise_amount,
-                players[1].chips,
-                to_call,
-                game_stage,
-                hands=hands,  # 傳入手牌以便bot計算
-            )
-            bot_action_pending = True
-        elif pygame.time.get_ticks() - bot_action_time >= 2000:
-            bot_action, bot_amount = bot_action_result
-            if bot_action == "fold":
-                action = PlayerAction.FOLD
-            elif bot_action in ("call", "check"):
+            print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, bot chips: {players[1].chips}")
+            bot_action_time = current_time
+            
+            # If player is ALL-IN, don't even ask bot - just force CALL
+            if player_all_in:
+                print("Player is ALL-IN, forcing bot to CALL")
+                bot_action_result = ("call", 0)  # Force bot to call when player is ALL-IN
+                bot_action_pending = True
+            else:
+                try:
+                    bot_action_result = bot.act(
+                        hands[1],
+                        community_cards,
+                        player_bets,
+                        players,
+                        min_raise_amount,
+                        players[1].chips,
+                        to_call,
+                        game_stage,
+                        hands=hands,
+                    )
+                    print(f"Bot decided action: {bot_action_result}")
+                except Exception as e:
+                    print(f"Error in bot.act(): {e}")
+                    bot_action_result = ("call", 0)  # Default to call if there's an error
+                bot_action_pending = True
+        elif current_time - bot_action_time >= 2000:
+            if bot_action_result is not None:
+                bot_action, bot_amount = bot_action_result
+                
+                # Always override to CALL if player is ALL-IN
+                if player_all_in:
+                    action = PlayerAction.CALL_OR_CHECK
+                    print("Forcing bot to CALL player's ALL-IN")
+                elif bot_action == "fold":
+                    action = PlayerAction.FOLD
+                elif bot_action in ("call", "check"):
+                    action = PlayerAction.CALL_OR_CHECK
+                elif bot_action in ("bet", "raise", "allin"):
+                    action = PlayerAction.BET_OR_RAISE
+                    raise_input_text = str(bot_amount)
+            else:
+                # Handle None result
+                print("Bot returned None action - defaulting to call/check")
                 action = PlayerAction.CALL_OR_CHECK
-            elif bot_action in ("bet", "raise", "allin"):
-                action = PlayerAction.BET_OR_RAISE
-                raise_input_text = str(bot_amount)
             bot_action_pending = False
+            print(f"Bot action completed: {action}")
+        # Add safety timeout to prevent infinite pending
+        elif current_time - bot_action_time >= 5000:  # 5 seconds max wait
+            print("Bot action timed out - forcing completion")
+            bot_action_pending = False
+            action = PlayerAction.CALL_OR_CHECK  # Default to call/check
     else:
         bot_action_pending = False
         for event in pygame.event.get():
@@ -201,13 +237,19 @@ while running:
             if action != PlayerAction.BET_OR_RAISE
         ]
 
+    # 判斷是否有玩家ALL-IN
+    any_allin = any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players))
+
+    # 按鈕顯示條件修正
+    # 若有玩家ALL-IN則不顯示任何行動按鈕
     if (
         not pending_next_stage
         and not showed_result
         and game_stage != GameStage.SHOWDOWN
         and not (
             current_player == 1 and bot_action_pending
-        )  # 玩家2是bot且未行動時不顯示按鈕
+        )
+        and not any_allin
     ):
         draw_action_buttons(
             screen,
@@ -242,12 +284,16 @@ while running:
         # 判斷是否ALL-IN
         allin_this_round = (
             player_bets[i] > 0
-            and player_bets[i] == players[i].chips + player_bets[i]
             and players[i].chips == 0
         )
 
         # 顯示手牌下注額
         bet_display = f"{player_bets[i]}"
+        # Fix for ALL-IN display - show full amount for all-in players
+        if allin_this_round:
+            original_chips = player_bets[i]  # The bet already contains all their chips
+            bet_display = f"{original_chips}"
+            
         bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
 
         # 置中顯示下注額
@@ -355,6 +401,7 @@ while running:
             current_player,
             last_raise_amount,
             last_actions,
+            bot_action_pending, 
         ) = GameFlow.reset_game(
             deck, players, Chips, big_blind_player, big_blind_amount
         )
@@ -365,7 +412,7 @@ while running:
             if player.chips == 0:
                 player.chips = Chips.chips
 
-    # 行動
+    # 行動處理
     if action and not pending_next_stage:
         result = handle_action(
             action,
@@ -388,6 +435,14 @@ while running:
             actions_this_round,
             showdown_time,
         )
+        
+        # Handle bot going ALL-IN special case
+        if action == PlayerAction.BET_OR_RAISE and current_player == 1 and players[1].chips == 0:
+            print("Bot went ALL-IN, forcing progression")
+            result["pending_next_stage"] = True
+            result["next_stage_time"] = pygame.time.get_ticks()
+            result["showed_hands"] = True
+            
         actions_this_round = result["actions_this_round"]
         acted_this_round = result["acted_this_round"]
         current_player = result["current_player"]
@@ -442,11 +497,11 @@ while running:
             next_stage_time = None
         else:
             # 若還有玩家ALL-IN且未到SHOWDOWN，繼續自動進入下階段
-            # 但要等所有還有籌碼的玩家都行動完
+            # 但要等所有還有籌碼的玩家都已經 acted_this_round 且 bot 行動完
             if any(p.chips == 0 for p in players):
-                # 檢查是否所有還有籌碼的玩家都已經 acted_this_round
                 active_players = [i for i, p in enumerate(players) if p.chips > 0]
-                if all(acted_this_round[i] for i in active_players):
+                # 只有當所有還有籌碼的玩家都 acted_this_round 且 bot_action_pending 為 False 才進入下一階段
+                if all(acted_this_round[i] for i in active_players) and not bot_action_pending:
                     pending_next_stage = True
                     next_stage_time = pygame.time.get_ticks()
                     showed_hands = True  # 持續公開手牌
@@ -456,6 +511,33 @@ while running:
             else:
                 pending_next_stage = False
                 next_stage_time = None
+
+    # --- 新增：有玩家ALL-IN且雙方下注額相等且bot已行動完，自動 pending_next_stage ---
+    if (
+        not pending_next_stage
+        and any_allin
+        and player_bets[0] == player_bets[1]
+        and game_stage != GameStage.SHOWDOWN
+    ):
+        # Check if both players are ALL-IN - if so, advance immediately
+        if players[0].chips == 0 and players[1].chips == 0:
+            print("Both players ALL-IN, advancing stage immediately")
+            pending_next_stage = True
+            next_stage_time = pygame.time.get_ticks()
+            showed_hands = True
+            bot_action_pending = False  # Make sure bot isn't stuck pending
+        elif current_player == 1:
+            if bot_action_pending:
+                print(f"Bot has pending action after ALL-IN: {bot_action_result}, waiting for it to complete")
+                # Don't advance stage yet, let the bot complete its action
+            else:
+                print("Waiting for bot to act before advancing stage after ALL-IN")
+                # Bot needs to act first
+        else:
+            print(f"Advancing stage after ALL-IN - current player: {current_player}, bot pending: {bot_action_pending}")
+            pending_next_stage = True
+            next_stage_time = pygame.time.get_ticks()
+            showed_hands = True
 
     community_card_positions = [
         (

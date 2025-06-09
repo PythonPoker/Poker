@@ -79,6 +79,10 @@ class PokerBot:
             elif win_rate > 0.5 and chips > to_call:
                 return ("call", to_call)
             elif chips <= to_call:
-                return ("allin", chips)
-            else:
-                return ("fold", 0)
+                # 只剩下allin選擇時，根據勝率決定要不要call allin
+                if win_rate > 0.4:
+                    return ("allin", chips)
+                else:
+                    return ("fold", 0)
+        # fallback: 若沒命中任何條件，預設棄牌
+        return ("fold", 0)

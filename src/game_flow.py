@@ -139,6 +139,7 @@ class GameFlow:
         current_player = 1 - big_blind_player
         last_raise_amount = big_blind_amount
         last_actions = ["", ""]
+        bot_action_pending = False  # 新增
         return (
             deck,
             hands,
@@ -160,4 +161,5 @@ class GameFlow:
             current_player,
             last_raise_amount,
             last_actions,
+            bot_action_pending,  # 新增
         )

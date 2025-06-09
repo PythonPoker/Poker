@@ -116,7 +116,19 @@ def handle_action(
                 player_bets[current_player] += pay
                 #若下注後籌碼歸零，顯示ALL-IN
                 if players[current_player].chips == 0:
-                    last_actions[current_player] = "ALLIN"
+                    last_actions[current_player] = "ALL-IN"
+                    showed_hands = True  # 立即公開手牌
+                    # 檢查對手是否也已經 ALL-IN
+                    if players[1 - current_player].chips == 0:
+                        # 雙方都 ALL-IN，立即設定為待進入下一階段
+                        pending_next_stage = True
+                        result_time = pygame.time.get_ticks()
+                    # 確保大盲注顯示正確的總籌碼
+                    if current_player == big_blind_player:
+                        # 將玩家的總下注額設為初始籌碼 (通常為 1000)
+                        total_chips = player_bets[current_player] + players[current_player].chips
+                        # 對於大盲，這應該是 1000 (990 + 10)
+                        player_bets[current_player] = total_chips
                 elif max_bet == 0:
                     last_actions[current_player] = "BET"
                 else:
@@ -126,7 +138,13 @@ def handle_action(
                 raise_input_text = ""
 
     # 判斷是否可以進入下一階段（雙方下注額相等且都已行動）
-    if all(acted_this_round) and player_bets[0] == player_bets[1]:
+    # 如果雙方都ALL-IN，立即進入下一階段
+    both_allin = all(p.chips == 0 for p in players)
+    if both_allin:
+        pending_next_stage = True
+        result_time = pygame.time.get_ticks()
+        showed_hands = True
+    elif all(acted_this_round) and player_bets[0] == player_bets[1]:
         if (
             game_stage == GameStage.PREFLOP
             and acted_this_round[big_blind_player] == False
