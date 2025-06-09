@@ -17,7 +17,7 @@ from action_handler import handle_action
 # Initialize Pygame and create a window
 pygame.init()
 game_setting = load_game_settings()
-print(game_setting)
+#print(game_setting)
 screen = pygame.display.set_mode((game_setting["WIDTH"], game_setting["HEIGHT"]))
 pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
@@ -110,12 +110,12 @@ while running:
         force_call = player_all_in or player_overbet
         
         if not bot_action_pending:
-            print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, player_overbet: {player_overbet}, bot chips: {players[1].chips}")
+            #print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, player_overbet: {player_overbet}, bot chips: {players[1].chips}")
             bot_action_time = current_time
             
             # 如果玩家ALL-IN或超额下注，直接强制机器人CALL
             if force_call:
-                print("Player is ALL-IN or overbet, forcing bot to CALL")
+                #print("Player is ALL-IN or overbet, forcing bot to CALL")
                 bot_action_result = ("call", 0)
                 bot_action_pending = True
             else:
@@ -131,9 +131,9 @@ while running:
                         game_stage,
                         hands=hands,
                     )
-                    print(f"Bot decided action: {bot_action_result}")
+                    #print(f"Bot decided action: {bot_action_result}")
                 except Exception as e:
-                    print(f"Error in bot.act(): {e}")
+                    #print(f"Error in bot.act(): {e}")
                     bot_action_result = ("call", 0)  # Default to call if there's an error
                 bot_action_pending = True
         elif current_time - bot_action_time >= 2000:
@@ -143,7 +143,7 @@ while running:
                 # 如果需要强制CALL，不管机器人决定什么，都强制它CALL
                 if force_call:
                     action = PlayerAction.CALL_OR_CHECK
-                    print("Forcing bot to CALL due to player ALL-IN or overbet")
+                    #print("Forcing bot to CALL due to player ALL-IN or overbet")
                 elif bot_action == "fold":
                     action = PlayerAction.FOLD
                 elif bot_action in ("call", "check"):
@@ -152,17 +152,17 @@ while running:
                     # 检查是否能进行加注/下注
                     if to_call >= players[1].chips:
                         # 如果跟注金额已经超过机器人所有筹码，强制CALL
-                        print("Call amount exceeds bot chips, forcing CALL instead of RAISE")
+                        #print("Call amount exceeds bot chips, forcing CALL instead of RAISE")
                         action = PlayerAction.CALL_OR_CHECK
                     else:
                         action = PlayerAction.BET_OR_RAISE
                         raise_input_text = str(bot_amount)
             else:
                 # Handle None result
-                print("Bot returned None action - defaulting to call/check")
+                #print("Bot returned None action - defaulting to call/check")
                 action = PlayerAction.CALL_OR_CHECK
             bot_action_pending = False
-            print(f"Bot action completed: {action}")
+            #print(f"Bot action completed: {action}")
     else:
         bot_action_pending = False
         for event in pygame.event.get():
