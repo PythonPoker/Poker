@@ -91,7 +91,7 @@ def handle_action(
             last_actions[current_player] = "CHECK"
         last_actions[1 - current_player] = ""
 
-        # 如果是小盲玩家，則換到大盲玩家行動
+        # 如果是Button玩家，則換到大盲玩家行動
         if game_stage == GameStage.PREFLOP:
             current_player = 1 - current_player
         else:
