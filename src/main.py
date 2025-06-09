@@ -418,16 +418,16 @@ while running:
         and pygame.time.get_ticks() - next_stage_time > 2000
     ):
         actions_this_round = 0
-        acted_this_round = [False, False]
-        pot += player_bets[0] + player_bets[1]
-        player_bets = [0, 0]
+        acted_this_round = [False] * len(players)
+        pot += sum(player_bets)
+        player_bets = [0] * len(players)
         bet = 0
         min_raise_amount = big_blind_amount
         raise_input_text = str(min_raise_amount)
         display_raise_input = raise_input_text
 
         if not showed_hands:
-            last_actions = ["", ""]
+            last_actions = [""] * len(players)
 
         # 使用 GameStage.advance_stage 進入下一階段
         game_stage, community_cards, current_player = GameStage.advance_stage(
@@ -438,15 +438,24 @@ while running:
             showed_result = False
             showed_hands = False
             showdown_time = None
-
-        pending_next_stage = False
-        next_stage_time = None
-
-        # 若還有玩家ALL-IN且未到SHOWDOWN，繼續自動進入下階段
-        if any(p.chips == 0 for p in players) and game_stage != GameStage.SHOWDOWN:
-            pending_next_stage = True
-            next_stage_time = pygame.time.get_ticks()
-            showed_hands = True  # 持續公開手牌
+            pending_next_stage = False
+            next_stage_time = None
+        else:
+            # 若還有玩家ALL-IN且未到SHOWDOWN，繼續自動進入下階段
+            # 但要等所有還有籌碼的玩家都行動完
+            if any(p.chips == 0 for p in players):
+                # 檢查是否所有還有籌碼的玩家都已經 acted_this_round
+                active_players = [i for i, p in enumerate(players) if p.chips > 0]
+                if all(acted_this_round[i] for i in active_players):
+                    pending_next_stage = True
+                    next_stage_time = pygame.time.get_ticks()
+                    showed_hands = True  # 持續公開手牌
+                else:
+                    pending_next_stage = False
+                    next_stage_time = None
+            else:
+                pending_next_stage = False
+                next_stage_time = None
 
     community_card_positions = [
         (

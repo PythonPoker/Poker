@@ -114,8 +114,9 @@ def handle_action(
                 pay = min(pay, players[current_player].chips)
                 players[current_player].chips -= pay
                 player_bets[current_player] += pay
-                if total_bet == max_bet + max_raise:
-                    last_actions[current_player] = "ALL-IN"
+                #若下注後籌碼歸零，顯示ALL-IN
+                if players[current_player].chips == 0:
+                    last_actions[current_player] = "ALLIN"
                 elif max_bet == 0:
                     last_actions[current_player] = "BET"
                 else:
