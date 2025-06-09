@@ -116,9 +116,6 @@ def handle_action(
                 player_bets[current_player] += pay
                 #若下注後籌碼歸零，顯示ALL-IN
                 if players[current_player].chips == 0:
-                    last_actions[current_player] = "ALL-IN"
-                    showed_hands = True  # 立即公開手牌
-                    # 檢查對手是否也已經 ALL-IN
                     if players[1 - current_player].chips == 0:
                         # 雙方都 ALL-IN，立即設定為待進入下一階段
                         pending_next_stage = True

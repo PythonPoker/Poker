@@ -104,17 +104,19 @@ while running:
     ):
         current_time = pygame.time.get_ticks()
         
-        # Check if player has gone ALL-IN - force the bot to call
+        # 检查是否需要强制CALL的情况
         player_all_in = players[0].chips == 0 and player_bets[0] > 0
+        player_overbet = player_bets[0] > player_bets[1] + players[1].chips
+        force_call = player_all_in or player_overbet
         
         if not bot_action_pending:
-            print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, bot chips: {players[1].chips}")
+            print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, player_overbet: {player_overbet}, bot chips: {players[1].chips}")
             bot_action_time = current_time
             
-            # If player is ALL-IN, don't even ask bot - just force CALL
-            if player_all_in:
-                print("Player is ALL-IN, forcing bot to CALL")
-                bot_action_result = ("call", 0)  # Force bot to call when player is ALL-IN
+            # 如果玩家ALL-IN或超额下注，直接强制机器人CALL
+            if force_call:
+                print("Player is ALL-IN or overbet, forcing bot to CALL")
+                bot_action_result = ("call", 0)
                 bot_action_pending = True
             else:
                 try:
@@ -138,28 +140,29 @@ while running:
             if bot_action_result is not None:
                 bot_action, bot_amount = bot_action_result
                 
-                # Always override to CALL if player is ALL-IN
-                if player_all_in:
+                # 如果需要强制CALL，不管机器人决定什么，都强制它CALL
+                if force_call:
                     action = PlayerAction.CALL_OR_CHECK
-                    print("Forcing bot to CALL player's ALL-IN")
+                    print("Forcing bot to CALL due to player ALL-IN or overbet")
                 elif bot_action == "fold":
                     action = PlayerAction.FOLD
                 elif bot_action in ("call", "check"):
                     action = PlayerAction.CALL_OR_CHECK
                 elif bot_action in ("bet", "raise", "allin"):
-                    action = PlayerAction.BET_OR_RAISE
-                    raise_input_text = str(bot_amount)
+                    # 检查是否能进行加注/下注
+                    if to_call >= players[1].chips:
+                        # 如果跟注金额已经超过机器人所有筹码，强制CALL
+                        print("Call amount exceeds bot chips, forcing CALL instead of RAISE")
+                        action = PlayerAction.CALL_OR_CHECK
+                    else:
+                        action = PlayerAction.BET_OR_RAISE
+                        raise_input_text = str(bot_amount)
             else:
                 # Handle None result
                 print("Bot returned None action - defaulting to call/check")
                 action = PlayerAction.CALL_OR_CHECK
             bot_action_pending = False
             print(f"Bot action completed: {action}")
-        # Add safety timeout to prevent infinite pending
-        elif current_time - bot_action_time >= 5000:  # 5 seconds max wait
-            print("Bot action timed out - forcing completion")
-            bot_action_pending = False
-            action = PlayerAction.CALL_OR_CHECK  # Default to call/check
     else:
         bot_action_pending = False
         for event in pygame.event.get():
@@ -284,16 +287,12 @@ while running:
         # 判斷是否ALL-IN
         allin_this_round = (
             player_bets[i] > 0
+            and player_bets[i] == players[i].chips + player_bets[i]
             and players[i].chips == 0
         )
 
         # 顯示手牌下注額
         bet_display = f"{player_bets[i]}"
-        # Fix for ALL-IN display - show full amount for all-in players
-        if allin_this_round:
-            original_chips = player_bets[i]  # The bet already contains all their chips
-            bet_display = f"{original_chips}"
-            
         bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
 
         # 置中顯示下注額
@@ -435,14 +434,6 @@ while running:
             actions_this_round,
             showdown_time,
         )
-        
-        # Handle bot going ALL-IN special case
-        if action == PlayerAction.BET_OR_RAISE and current_player == 1 and players[1].chips == 0:
-            print("Bot went ALL-IN, forcing progression")
-            result["pending_next_stage"] = True
-            result["next_stage_time"] = pygame.time.get_ticks()
-            result["showed_hands"] = True
-            
         actions_this_round = result["actions_this_round"]
         acted_this_round = result["acted_this_round"]
         current_player = result["current_player"]
@@ -518,26 +509,13 @@ while running:
         and any_allin
         and player_bets[0] == player_bets[1]
         and game_stage != GameStage.SHOWDOWN
+        and (
+            current_player != 1 or not bot_action_pending  # 只有不是bot行動或bot已行動完才推進
+        )
     ):
-        # Check if both players are ALL-IN - if so, advance immediately
-        if players[0].chips == 0 and players[1].chips == 0:
-            print("Both players ALL-IN, advancing stage immediately")
-            pending_next_stage = True
-            next_stage_time = pygame.time.get_ticks()
-            showed_hands = True
-            bot_action_pending = False  # Make sure bot isn't stuck pending
-        elif current_player == 1:
-            if bot_action_pending:
-                print(f"Bot has pending action after ALL-IN: {bot_action_result}, waiting for it to complete")
-                # Don't advance stage yet, let the bot complete its action
-            else:
-                print("Waiting for bot to act before advancing stage after ALL-IN")
-                # Bot needs to act first
-        else:
-            print(f"Advancing stage after ALL-IN - current player: {current_player}, bot pending: {bot_action_pending}")
-            pending_next_stage = True
-            next_stage_time = pygame.time.get_ticks()
-            showed_hands = True
+        pending_next_stage = True
+        next_stage_time = pygame.time.get_ticks()
+        showed_hands = True
 
     community_card_positions = [
         (
