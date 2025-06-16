@@ -220,7 +220,6 @@ while running:
         game_stage, community_cards, current_player = GameStage.advance_stage(
             game_stage, deck, community_cards, big_blind_player, players
         )
-        print("進入新階段:", game_stage, "第一個行動玩家:", current_player)
 
         if game_stage == GameStage.SHOWDOWN:
             showed_result = False

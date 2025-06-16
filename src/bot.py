@@ -1,4 +1,5 @@
 import random
+import numpy as np
 import pygame
 from game_stage import GameStage
 from card import Deck
@@ -10,7 +11,45 @@ class PokerBot:
     def __init__(self, player_index):
         self.player_index = player_index
 
-    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=300):
+    def get_position(self, player_index, dealer_index, num_players):
+        """
+        回傳玩家在本局的座位名稱
+        """
+        rel_pos = (player_index - dealer_index) % num_players
+        if num_players == 6:
+            pos_names = ["BTN", "SB", "BB", "UTG", "MP", "CO"]
+        else:
+            pos_names = [f"P{i}" for i in range(num_players)]
+        return pos_names[rel_pos]
+
+    def get_gto_thresholds(self, position, game_stage):
+        """
+        根據位置與階段回傳勝率門檻
+        """
+        # 這裡數值可依需求微調
+        if game_stage == GameStage.PREFLOP:
+            thresholds = {
+                "UTG":  (0.75, 0.60, 0.45),
+                "MP":   (0.72, 0.58, 0.43),
+                "CO":   (0.70, 0.56, 0.41),
+                "BTN":  (0.68, 0.54, 0.39),
+                "SB":   (0.70, 0.55, 0.40),
+                "BB":   (0.68, 0.53, 0.38),
+            }
+        else:
+            # 翻牌後可略降門檻
+            thresholds = {
+                "UTG":  (0.70, 0.55, 0.40),
+                "MP":   (0.68, 0.53, 0.38),
+                "CO":   (0.66, 0.51, 0.36),
+                "BTN":  (0.64, 0.49, 0.34),
+                "SB":   (0.66, 0.51, 0.36),
+                "BB":   (0.64, 0.49, 0.34),
+            }
+        # 預設
+        return thresholds.get(position, (0.7, 0.55, 0.4))
+
+    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=10000):
         """
         蒙地卡羅模擬，估算bot在目前情境下的勝率（支援多玩家）
         """
@@ -67,46 +106,60 @@ class PokerBot:
         max_raise,
         to_call,
         game_stage,
-        hands=None,  # 新增 hands 參數
+        hands=None,
+        dealer_index=0,
     ):
-        """
-        決定bot行動（蒙地卡羅模擬勝率）
-        """
         chips = players[self.player_index].chips
-
-        # 蒙地卡羅估算勝率
+        num_players = len(players)
         win_rate = self.estimate_win_rate(
             hand, community_cards, hands, players, num_simulations=200
         )
 
-        # 決策邏輯（可依需求調整閾值）
+        # 取得位置
+        position = self.get_position(self.player_index, dealer_index, num_players)
+        thr_high, thr_mid, thr_low = self.get_gto_thresholds(position, game_stage)
+
+        r = np.random.rand()
         if to_call == 0:
-            if win_rate > 0.7 and chips > min_raise:
-                # 強牌主動下注
-                bet_amount = min(min_raise * 2, chips)
-                if bet_amount >= chips:
-                    return ("allin", chips)
-                return ("bet", bet_amount)
-            elif win_rate > 0.4:
-                return ("check", 0)
+            if win_rate > thr_high:
+                if r < 0.7 and chips > min_raise:
+                    bet_amount = min(min_raise * 2, chips)
+                    if bet_amount >= chips:
+                        return ("allin", chips)
+                    return ("bet", bet_amount)
+                else:
+                    return ("check", 0)
+            elif win_rate > thr_mid:
+                if r < 0.8:
+                    return ("check", 0)
+                else:
+                    return ("bet", min(min_raise, chips))
             else:
                 return ("check", 0)
         else:
-            if win_rate > 0.8 and chips > to_call + min_raise:
-                # 超強牌加注
-                raise_amount = min(to_call + min_raise * 2, chips)
-                if raise_amount >= chips:
-                    return ("allin", chips)
-                return ("raise", raise_amount)
-            elif win_rate > 0.5 and chips > to_call:
-                return ("call", to_call)
+            if win_rate > thr_high and chips > to_call + min_raise:
+                if r < 0.6:
+                    raise_amount = min(to_call + min_raise * 2, chips)
+                    if raise_amount >= chips:
+                        return ("allin", chips)
+                    return ("raise", raise_amount)
+                else:
+                    return ("call", to_call)
+            elif win_rate > thr_mid and chips > to_call:
+                if r < 0.7:
+                    return ("call", to_call)
+                else:
+                    return ("fold", 0)
             elif chips <= to_call:
-                # 只剩下allin選擇時，根據勝率決定要不要call allin
-                if win_rate > 0.4:
+                if win_rate > thr_low:
                     return ("allin", chips)
                 else:
                     return ("fold", 0)
-        # fallback: 若沒命中任何條件，預設棄牌
+            else:
+                if r < 0.2:
+                    return ("call", to_call)
+                else:
+                    return ("fold", 0)
         return ("fold", 0)
 
     @staticmethod
