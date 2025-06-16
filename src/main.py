@@ -297,7 +297,7 @@ while running:
             screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], game_setting
         )
 
-        # 棄牌玩家不顯示手牌和牌型，但要顯示行動圓點與行動
+        # 棄牌玩家不顯示手牌和牌型
         if getattr(players[i], "is_folded", False):
             # 行動圓點
             UIUtils.draw_action_dot(
@@ -312,6 +312,13 @@ while running:
         # 手牌
         show_hand = (i == 0) or (i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN))
         UIUtils.draw_hand(screen, hand, card_images, start_x, y, show_hand)
+
+        # 牌型顯示（手牌下方，灰底白字）
+        if show_hand and len(hand + community_cards) >= 5:
+            best_rank = best_five(hand + community_cards)
+            hand_type = get_hand_type_name(best_rank)
+            UIUtils.draw_hand_type(screen, font, hand_type, start_x, y, hand, game_setting["CARD_HEIGHT"])
+
         UIUtils.draw_action_dot(
             screen,
             i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN,

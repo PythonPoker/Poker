@@ -39,13 +39,17 @@ class UIUtils:
             x = start_x + j * 80
             screen.blit(img, (x, y))
 
+    @staticmethod
     def draw_hand_type(screen, font, hand_type, start_x, y, hand, card_height):
+        """
+        將牌型顯示在手牌正下方，灰底白字
+        """
         rect_x = start_x
-        rect_y = y + card_height - 40
+        rect_y = y + card_height + 8  # 手牌下方一點
         rect_width = len(hand) * 80
-        rect_height = 40
+        rect_height = 32
         pygame.draw.rect(
-            screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height)
+            screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height), border_radius=8
         )
         text = font.render(hand_type, True, (255, 255, 255))
         text_x = rect_x + (rect_width - text.get_width()) // 2
@@ -156,7 +160,7 @@ class UIUtils:
             edge_x, edge_y = hand_center_x, hand_center_y
         else:
             # 偏移手牌寬度/2 + 18px（讓數字在手牌外圍一點點）
-            offset = hand_width // 2 + 50
+            offset = hand_width // 2 + 30
             edge_x = int(hand_center_x + dx / length * offset)
             edge_y = int(hand_center_y + dy / length * offset)
 
