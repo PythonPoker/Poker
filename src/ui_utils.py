@@ -84,7 +84,7 @@ class UIUtils:
         W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
         center_x, center_y = W // 2, H // 2
 
-        bet_text_offset = 100  # 距離中心的偏移量，可自行調整
+        bet_text_offset = 200  # 距離中心的偏移量，可自行調整
         dx = center_x - hand_center_x
         dy = center_y - hand_center_y
         length = (dx ** 2 + dy ** 2) ** 0.5
@@ -110,3 +110,38 @@ class UIUtils:
             (W // 2 + 2 * 100 - CARD_W // 2, H // 2 - CARD_H // 2),
         ]
         return positions
+
+    @staticmethod
+    def draw_bet_text_on_hand_edge_toward_community(
+        screen, font, bet, start_x, y, hand, card_height, game_setting
+    ):
+        """
+        將下注額顯示在手牌邊緣，朝向公牌方向
+        """
+        # 計算手牌中心
+        hand_width = len(hand) * 80
+        hand_height = card_height
+        hand_center_x = start_x + hand_width // 2
+        hand_center_y = y + hand_height // 2
+
+        # 計算公牌中心
+        community_positions = UIUtils.get_community_card_positions(game_setting)
+        num_community = 5
+        cx = sum([pos[0] + game_setting["CARD_WIDTH"] // 2 for pos in community_positions[:num_community]]) / num_community
+        cy = sum([pos[1] + game_setting["CARD_HEIGHT"] // 2 for pos in community_positions[:num_community]]) / num_community
+
+        # 計算方向向量
+        dx = cx - hand_center_x
+        dy = cy - hand_center_y
+        length = (dx ** 2 + dy ** 2) ** 0.5
+        if length == 0:
+            edge_x, edge_y = hand_center_x, hand_center_y
+        else:
+            # 偏移手牌寬度/2 + 18px（讓數字在手牌外圍一點點）
+            offset = hand_width // 2 + 18
+            edge_x = int(hand_center_x + dx / length * offset)
+            edge_y = int(hand_center_y + dy / length * offset)
+
+        bet_text = font.render(f"{bet}", True, (0, 255, 255))
+        bet_text_rect = bet_text.get_rect(center=(edge_x, edge_y))
+        screen.blit(bet_text, bet_text_rect)

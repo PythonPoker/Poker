@@ -73,7 +73,7 @@ class GameFlow:
         W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
         player_positions = [
             (W // 2 - 80, H - 140),      # 玩家1（中下，真人）
-            (100, H - 220),              # 玩家2（左下）
+            (150, H - 220),              # 玩家2（左下）
             (100, 120),                  # 玩家3（左上）
             (W // 2 - 80, 40),           # 玩家4（中上）
             (W - 180, 120),              # 玩家5（右上）
