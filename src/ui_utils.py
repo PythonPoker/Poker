@@ -58,10 +58,22 @@ class UIUtils:
 
     def draw_action_dot(screen, is_current, start_x, y, hand, card_height):
         if is_current:
-            dot_radius = 15
-            dot_x = start_x + len(hand) * 80 + 30
-            dot_y = y + card_height // 2
-            pygame.draw.circle(screen, (255, 215, 0), (dot_x, dot_y), dot_radius)
+            # 計算手牌外圍矩形
+            hand_width = len(hand) * 80
+            hand_height = card_height
+            border_rect = pygame.Rect(
+                start_x - 8,           # 左右各多出8px
+                y - 8,                 # 上下各多出8px
+                hand_width + 16,
+                hand_height + 16
+            )
+            pygame.draw.rect(
+                screen,
+                (255, 215, 0),         # 黃色
+                border_rect,
+                width=4,               # 線寬4px
+                border_radius=14       # 圓角
+            )
 
     def draw_action_on_hand(screen, last_action, start_x, y, hand, card_height):
         if last_action:
