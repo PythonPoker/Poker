@@ -198,6 +198,39 @@ while running:
         if result.get("continue_flag"):
             continue
 
+    # 2秒後進入下個階段
+    if (
+        pending_next_stage
+        and next_stage_time
+        and pygame.time.get_ticks() - next_stage_time > 2000
+    ):
+        actions_this_round = 0
+        acted_this_round = [False] * len(players)
+        pot += sum(player_bets)
+        player_bets = [0] * len(players)
+        bet = 0
+        min_raise_amount = big_blind_amount
+        raise_input_text = str(min_raise_amount)
+        display_raise_input = raise_input_text
+
+        if not showed_hands:
+            last_actions = [""] * len(players)
+
+        # 進入下一階段
+        game_stage, community_cards, current_player = GameStage.advance_stage(
+            game_stage, deck, community_cards, big_blind_player, players
+        )
+
+        if game_stage == GameStage.SHOWDOWN:
+            showed_result = False
+            showed_hands = False
+            showdown_time = None
+            pending_next_stage = False
+            next_stage_time = None
+        else:
+            pending_next_stage = False
+            next_stage_time = None
+
     # Update screen
     screen.fill((0, 0, 0))
 
@@ -308,6 +341,67 @@ while running:
 
     if community_cards:
         UIUtils.draw_pot_text(screen, font, pot, community_card_positions, game_setting["WIDTH"])
+
+    # SHOWDOWN 階段：顯示勝者並自動進入下一局
+    if game_stage == GameStage.SHOWDOWN:
+        (
+            showed_hands,
+            showed_result,
+            showdown_time,
+            winner_text,
+            result_time,
+            pot_given,
+            pot_give_time,
+            pot,
+        ) = PokerResult.showdown_result(
+            hands,
+            community_cards,
+            players,
+            pot,
+            showed_hands,
+            showed_result,
+            showdown_time,
+            winner_text,
+            result_time,
+            pot_given,
+            pot_give_time,
+            Chips,
+            font,
+            game_setting,
+            screen,
+        )
+
+        # pot 分配完畢後，延遲2秒自動開新局
+        if pot_given and pot_give_time and pygame.time.get_ticks() - pot_give_time > 2000:
+            (
+                deck,
+                hands,
+                community_cards,
+                deal_index,
+                game_stage,
+                showed_result,
+                showed_hands,
+                winner_text,
+                result_time,
+                showdown_time,
+                pot_given,
+                pot_give_time,
+                big_blind_player,
+                big_blind_amount,
+                player_bets,
+                acted_this_round,
+                bet,
+                current_player,
+                last_raise_amount,
+                last_actions,
+                bot_action_pending,
+            ) = GameFlow.reset_game(
+                deck, players, Chips, big_blind_player, big_blind_amount
+            )
+            pot = 0
+            for player in players:
+                if player.chips == 0:
+                    player.chips = Chips.chips
 
     pygame.display.update()
 
