@@ -127,7 +127,11 @@ class ActionHandler:
             to_call = max_bet - player_bets[current_player]
             max_raise = players[current_player].chips
             if display_raise_input.isdigit():
-                raise_amount = int(display_raise_input)
+                raise_amount = int(raise_input_text)
+                if raise_amount < min_raise_amount:
+                    raise_amount = min_raise_amount
+                if raise_amount > players[current_player].chips:
+                    raise_amount = players[current_player].chips
                 total_bet = raise_amount
                 min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
                 if total_bet >= min_total_bet and total_bet <= max_bet + max_raise:

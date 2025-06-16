@@ -120,28 +120,39 @@ class PokerBot:
 
         r = np.random.rand()
         max_bet = max(player_bets)
+        pot = sum(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
+        # 根據勝率決定下注/加注尺寸
+        if win_rate > 0.75:
+            bet_ratio = 0.8  # 80% pot
+        elif win_rate > 0.6:
+            bet_ratio = 0.5  # 50% pot
+        elif win_rate > 0.45:
+            bet_ratio = 0.33 # 33% pot
+        else:
+            bet_ratio = 0.0
+
+        bet_amount = max(min_total_bet, int(pot * bet_ratio))
+        bet_amount = min(bet_amount, chips)
+
         if to_call == 0:
-            if win_rate > thr_high:
-                if r < 0.7 and chips > min_total_bet:
-                    bet_amount = min(min_total_bet, chips)
+            if bet_ratio > 0:
+                # 有下注動機
+                if chips > bet_amount and r < 0.7:
                     if bet_amount >= chips:
                         return ("allin", chips)
                     return ("bet", bet_amount)
                 else:
                     return ("check", 0)
-            elif win_rate > thr_mid:
-                if r < 0.8:
-                    return ("check", 0)
-                else:
-                    return ("bet", min(min_total_bet, chips))
             else:
                 return ("check", 0)
         else:
+            # 加注時也根據勝率決定加注尺寸
+            raise_amount = max(min_total_bet, int(pot * bet_ratio) + to_call)
+            raise_amount = min(raise_amount, chips)
             if win_rate > thr_high and chips > to_call + min_raise:
-                if r < 0.6:
-                    raise_amount = min(max_bet + min_raise, chips)
+                if r < 0.6 and bet_ratio > 0:
                     if raise_amount >= chips:
                         return ("allin", chips)
                     return ("raise", raise_amount)
