@@ -149,7 +149,7 @@ class ActionHandler:
                     # 加注後，所有人都要重新行動
                     acted_this_round = [False for _ in range(num_players)]
                     acted_this_round[current_player] = True
-                    print(f"BOT加注金額: {raise_amount}, 最小加注: {min_raise_amount}, 最小總下注: {min_total_bet}")
+                    #print(f"BOT加注金額: {raise_amount}, 最小加注: {min_raise_amount}, 最小總下注: {min_total_bet}")
                     # 換到下一個有籌碼且未 acted 的玩家
                     current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
 
