@@ -22,35 +22,36 @@ class GameStage(Enum):
 
     @staticmethod
     def advance_stage(game_stage, deck, community_cards, big_blind_player, players=None):
-        """
-        根據目前階段自動進入下一階段，並處理公牌發牌與 current_player。
-        回傳 (新階段, updated_community_cards, 新current_player)
-        players: 傳入玩家列表以跳過已棄牌或all-in玩家
-        """
         NUM_PLAYERS = len(players) if players else 6
 
         def find_next_active_player(start_idx):
+            # 從start_idx開始，依序找未棄牌且有籌碼的玩家
             for offset in range(NUM_PLAYERS):
                 idx = (start_idx + offset) % NUM_PLAYERS
-                if players is None or (players[idx].chips > 0):
+                if players is None:
+                    return idx
+                if players[idx].chips > 0 and not getattr(players[idx], "is_folded", False):
                     return idx
             return start_idx
 
         # 小盲玩家
-        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        small_blind_player = (big_blind_player - 1) % NUM_PLAYERS
 
         if game_stage == GameStage.PREFLOP:
+            acted_this_round = [False] * len(players)
             # 發三張公牌
             for _ in range(3):
                 community_cards.append(deck.cards.pop(0))
-            # 翻牌後由小盲開始
+            # 翻牌後由小盲開始，依序找未棄牌玩家
             next_player = find_next_active_player(small_blind_player)
             return GameStage.FLOP, community_cards, next_player
         elif game_stage == GameStage.FLOP:
+            acted_this_round = [False] * len(players)
             community_cards.append(deck.cards.pop(0))
             next_player = find_next_active_player(small_blind_player)
             return GameStage.TURN, community_cards, next_player
         elif game_stage == GameStage.TURN:
+            acted_this_round = [False] * len(players)
             community_cards.append(deck.cards.pop(0))
             next_player = find_next_active_player(small_blind_player)
             return GameStage.RIVER, community_cards, next_player

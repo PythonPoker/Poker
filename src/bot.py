@@ -10,7 +10,7 @@ class PokerBot:
     def __init__(self, player_index):
         self.player_index = player_index
 
-    def estimate_win_rate(self, hand, community_cards, hands, num_simulations=300):
+    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=300):
         """
         蒙地卡羅模擬，估算bot在目前情境下的勝率（支援多玩家）
         """
@@ -21,7 +21,7 @@ class PokerBot:
         # 找出已知牌（自己的手牌、所有已知手牌、已知公牌）
         used_cards = set(community_cards + hand)
         for i, h in enumerate(hands):
-            if i != self.player_index and h:
+            if i != self.player_index and h and not getattr(players[i], "is_folded", False):
                 used_cards.update(h)
 
         deck = Deck()
@@ -36,7 +36,7 @@ class PokerBot:
             for i in range(num_players):
                 if i == self.player_index:
                     sim_hands.append(hand)
-                elif hands[i]:  # 對手未棄牌
+                elif hands[i] and not getattr(players[i], "is_folded", False):
                     sim_hands.append([sim_deck.pop(), sim_deck.pop()])
                 else:
                     sim_hands.append([])  # 已棄牌玩家
@@ -76,7 +76,7 @@ class PokerBot:
 
         # 蒙地卡羅估算勝率
         win_rate = self.estimate_win_rate(
-            hand, community_cards, hands, num_simulations=200
+            hand, community_cards, hands, players, num_simulations=200
         )
 
         # 決策邏輯（可依需求調整閾值）

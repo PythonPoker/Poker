@@ -9,11 +9,15 @@ class ActionHandler:
 
     @staticmethod
     def get_next_active_player(players, acted_this_round, current_player):
-        """取得下一個有籌碼且未棄牌的玩家index"""
+        """取得下一個有籌碼且未棄牌且未 acted 的玩家index"""
         num_players = len(players)
         for offset in range(1, num_players + 1):
             idx = (current_player + offset) % num_players
-            if players[idx].chips > 0 and not acted_this_round[idx]:
+            if (
+                players[idx].chips > 0
+                and not getattr(players[idx], "is_folded", False)
+                and not acted_this_round[idx]
+            ):
                 return idx
         return current_player
 
@@ -145,7 +149,10 @@ class ActionHandler:
                     current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
 
         # 判斷是否可以進入下一階段（所有有籌碼玩家都已行動且下注額相等）
-        active_players = [i for i, p in enumerate(players) if p.chips > 0 or player_bets[i] > 0]
+        active_players = [
+            i for i, p in enumerate(players)
+            if (p.chips > 0 or player_bets[i] > 0) and not getattr(p, "is_folded", False)
+        ]
         all_acted = all(acted_this_round[i] for i in active_players)
         all_equal_bet = len(set(player_bets[i] for i in active_players)) == 1
 
