@@ -20,22 +20,37 @@ class GameStage(Enum):
             return GameStage.SHOWDOWN
         return None
 
-    def advance_stage(game_stage, deck, community_cards, big_blind_player):
+    @staticmethod
+    def advance_stage(game_stage, deck, community_cards, big_blind_player, players=None):
         """
         根據目前階段自動進入下一階段，並處理公牌發牌與 current_player。
         回傳 (新階段, updated_community_cards, 新current_player)
+        players: 傳入玩家列表以跳過已棄牌或all-in玩家
         """
+        NUM_PLAYERS = len(players) if players else 6
+
+        def find_next_active_player(start_idx):
+            for offset in range(NUM_PLAYERS):
+                idx = (start_idx + offset) % NUM_PLAYERS
+                if players is None or (players[idx].chips > 0):
+                    return idx
+            return start_idx
+
         if game_stage == GameStage.PREFLOP:
             # 發三張公牌
             for _ in range(3):
                 community_cards.append(deck.cards.pop(0))
-            return GameStage.FLOP, community_cards, big_blind_player
+            # 下一輪由大盲左手邊第二位開始，且還有籌碼
+            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            return GameStage.FLOP, community_cards, next_player
         elif game_stage == GameStage.FLOP:
             community_cards.append(deck.cards.pop(0))
-            return GameStage.TURN, community_cards, big_blind_player
+            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            return GameStage.TURN, community_cards, next_player
         elif game_stage == GameStage.TURN:
             community_cards.append(deck.cards.pop(0))
-            return GameStage.RIVER, community_cards, big_blind_player
+            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            return GameStage.RIVER, community_cards, next_player
         elif game_stage == GameStage.RIVER:
             return GameStage.SHOWDOWN, community_cards, big_blind_player
         return game_stage, community_cards, big_blind_player
