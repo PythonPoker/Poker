@@ -159,6 +159,18 @@ class PokerBot:
         elif num_calls >= num_players // 2:
             bet_ratio = 0.6
 
+        # 根據剩餘人數調整門檻
+        active_players = [p for p in players if not getattr(p, "is_folded", False) and p.chips > 0]
+        num_active = len(active_players)
+        if num_active <= 3:
+            adj_thr_high -= 0.04
+            adj_thr_mid -= 0.04
+            bet_ratio += 0.1
+        elif num_active == 2:
+            adj_thr_high -= 0.08
+            adj_thr_mid -= 0.08
+            bet_ratio += 0.2
+
         r = np.random.rand()
         max_bet = max(player_bets)
         pot = sum(player_bets)
