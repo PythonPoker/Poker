@@ -14,7 +14,12 @@ class Deck:
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def deal_player_hands(self, num_players=6, cards_per_player=2):
+    def deal_player_hands(self, num_players, cards_per_player=2):
+        """
+        發牌給所有玩家。
+        num_players: 玩家數（請務必傳入正確的玩家數，例如6人局就傳6）
+        cards_per_player: 每位玩家手牌數（德州撲克為2）
+        """
         hands = []
         for _ in range(num_players):
             hand = []
