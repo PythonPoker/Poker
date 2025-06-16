@@ -101,6 +101,21 @@ class PokerResult:
         else:
             return 0
 
+    @staticmethod
+    def compare_all_players(hands, community):
+        """
+        比較多位玩家的最大牌型，回傳所有最大牌型玩家的 index list（支援平手）
+        """
+        best_ranks = []
+        for hand in hands:
+            if hand:  # 避免已棄牌玩家
+                best_ranks.append(PokerResult.best_five(hand + community))
+            else:
+                best_ranks.append(None)
+        max_rank = max([r for r in best_ranks if r is not None])
+        winners = [i for i, r in enumerate(best_ranks) if r == max_rank]
+        return winners, max_rank
+
     def get_hand_type_name(rank_tuple):
         return HAND_TYPE_NAME.get(rank_tuple[0], "未知")
 
@@ -138,19 +153,15 @@ class PokerResult:
             elif (
                 showdown_time
                 and now - showdown_time > 3000
-                and len(hands[0]) > 0
-                and len(hands[1]) > 0
                 and len(community_cards) >= 3
             ):
-                result = PokerResult.compare_players(
-                    hands[0], hands[1], community_cards
-                )
-                if result == 1:
-                    winner_text = "P1 WINS"
-                elif result == -1:
-                    winner_text = "P2 WINS"
+                # 只比未棄牌玩家
+                active_hands = [hand if len(hand) > 0 else [] for hand in hands]
+                winners, max_rank = PokerResult.compare_all_players(active_hands, community_cards)
+                if len(winners) == 1:
+                    winner_text = f"P{winners[0]+1} WINS"
                 else:
-                    winner_text = "DRAW"
+                    winner_text = " & ".join([f"P{i+1}" for i in winners]) + " WIN"
                 showed_result = True
                 result_time = now
 
@@ -166,14 +177,17 @@ class PokerResult:
             screen.blit(text_surface, text_rect)
             # 2秒後加pot到勝者，只加一次
             if not pot_given and result_time and now - result_time > 2000:
-                if winner_text == "P1 WINS":
-                    players[0].chips += pot
-                elif winner_text == "P2 WINS":
-                    players[1].chips += pot
-                elif winner_text == "DRAW":
-                    players[0].chips += pot // 2
-                    players[1].chips += pot // 2
-                pot = 0
+                # 找出所有獲勝玩家
+                winners = []
+                if "WIN" in winner_text:
+                    for i in range(len(players)):
+                        if f"P{i+1}" in winner_text:
+                            winners.append(i)
+                if winners:
+                    share = pot // len(winners)
+                    for i in winners:
+                        players[i].chips += share
+                    pot = 0
                 pot_given = True
                 pot_give_time = now
 
