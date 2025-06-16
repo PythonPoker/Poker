@@ -156,8 +156,9 @@ class PokerResult:
                 and len(community_cards) >= 3
             ):
                 # 只比未棄牌玩家
-                active_hands = [hand if len(hand) > 0 else [] for hand in hands]
+                active_hands = [hand if not getattr(players[i], "is_folded", False) else [] for i, hand in enumerate(hands)]
                 winners, max_rank = PokerResult.compare_all_players(active_hands, community_cards)
+                # 只顯示未棄牌且獲勝的玩家
                 if len(winners) == 1:
                     winner_text = f"P{winners[0]+1} WINS"
                 else:

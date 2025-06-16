@@ -126,7 +126,7 @@ class ActionHandler:
             max_bet = max(player_bets)
             to_call = max_bet - player_bets[current_player]
             max_raise = players[current_player].chips
-            if display_raise_input.isdigit():
+            if raise_input_text.isdigit():
                 raise_amount = int(raise_input_text)
                 if raise_amount < min_raise_amount:
                     raise_amount = min_raise_amount
@@ -149,6 +149,7 @@ class ActionHandler:
                     # 加注後，所有人都要重新行動
                     acted_this_round = [False for _ in range(num_players)]
                     acted_this_round[current_player] = True
+                    print(f"BOT加注金額: {raise_amount}, 最小加注: {min_raise_amount}, 最小總下注: {min_total_bet}")
                     # 換到下一個有籌碼且未 acted 的玩家
                     current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
 

@@ -133,6 +133,7 @@ class PokerBot:
         else:
             bet_ratio = 0.0
 
+        # 下注時
         bet_amount = max(min_total_bet, int(pot * bet_ratio))
         bet_amount = min(bet_amount, chips)
 
