@@ -312,16 +312,6 @@ while running:
         # 手牌
         show_hand = (i == 0) or (i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN))
         UIUtils.draw_hand(screen, hand, card_images, start_x, y, show_hand)
-        # 牌型
-        cards_to_check = hand + community_cards
-        if show_hand and len(cards_to_check) >= 5:
-            best_rank = best_five(cards_to_check)
-            hand_type = get_hand_type_name(best_rank)
-        else:
-            hand_type = ""
-        if show_hand:
-            UIUtils.draw_hand_type(screen, font, hand_type, start_x, y, hand, game_setting["CARD_HEIGHT"])
-        # 行動圓點
         UIUtils.draw_action_dot(
             screen,
             i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN,
@@ -329,6 +319,7 @@ while running:
         )
         # 行動顯示
         UIUtils.draw_action_on_hand(screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"])
+        UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"], hand)
 
     # 公牌
     community_card_positions = UIUtils.get_community_card_positions(game_setting)

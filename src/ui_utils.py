@@ -1,12 +1,30 @@
 import pygame
 
 class UIUtils:
-    
     @staticmethod
-    def draw_chip_text(screen, font, chips, start_x, y, card_height):
-        chip_text = font.render(f"Chips: {chips}", True, (255, 255, 255))
-        chip_text_x = start_x - 180
-        chip_text_y = y + card_height // 2 - chip_text.get_height() // 2
+    def draw_chip_text(screen, font, chips, start_x, y, card_height, hand=None):
+        """
+        將籌碼顯示在手牌正下方中央
+        hand: 傳入手牌list以計算寬度，若無則預設2張
+        """
+        if hand is None:
+            hand_width = 2 * 80
+        else:
+            hand_width = len(hand) * 80
+        chip_text = font.render(f"{chips}", True, (255, 255, 255))
+        chip_text_x = start_x + (hand_width - chip_text.get_width()) // 2
+        chip_text_y = y + card_height - 40   # 可微調與手牌距離
+        # 畫灰底圓角矩形
+        padding_x, padding_y = 10, 4
+        bg_rect = pygame.Rect(
+            chip_text_x - padding_x,
+            chip_text_y - padding_y,
+            chip_text.get_width() + 2 * padding_x,
+            chip_text.get_height() + 2 * padding_y,
+        )
+        pygame.draw.rect(screen, (80, 80, 80), bg_rect, border_radius=8)
+
+        # 畫籌碼文字
         screen.blit(chip_text, (chip_text_x, chip_text_y))
 
     def draw_bet_text(screen, font, bet, start_x, y, hand, card_height, player_index):
