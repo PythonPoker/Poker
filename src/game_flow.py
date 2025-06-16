@@ -124,7 +124,7 @@ class GameFlow:
         }
 
     @staticmethod
-    def reset_game(deck, players, Chips, big_blind_player, big_blind_amount):
+    def reset_game(deck, players, Chips, big_blind_player, big_blind_amount, bots):
         deck = Deck()
         deck.shuffle()
         hands = deck.deal_player_hands(num_players=NUM_PLAYERS, cards_per_player=2)
@@ -171,6 +171,11 @@ class GameFlow:
         last_raise_amount = big_blind_amount
         last_actions = ["" for _ in range(NUM_PLAYERS)]
         bot_action_pending = False  # 新增
+        # 重設所有 bot 的 bluff 狀態
+        for bot in bots:
+            if bot is not None:
+                bot.is_bluffing = False
+                bot.last_bluff_street = None
         return (
             deck,
             hands,

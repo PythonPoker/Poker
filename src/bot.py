@@ -58,6 +58,8 @@ class PokerBot:
         if GLOBAL_OPP_MODELS is None or len(GLOBAL_OPP_MODELS) != num_players:
             GLOBAL_OPP_MODELS = [OpponentModel() for _ in range(num_players)]
         self.opp_models = GLOBAL_OPP_MODELS
+        self.is_bluffing = False
+        self.last_bluff_street = None
 
     def get_position(self, player_index, dealer_index, num_players):
         """
@@ -252,10 +254,31 @@ class PokerBot:
         if win_rate > adj_thr_high + 0.08 and r < 0.4:
             overbet_ratio = np.random.uniform(1.2, 2.0)  # 40%機率超池，1.2~2倍pot
         elif r < 0.2:
-            overbet_ratio = np.random.uniform(1.2, 2.0)  # 5%機率隨機bluff超池
+            overbet_ratio = np.random.uniform(1.2, 2.0)  # 20%機率隨機bluff超池
 
         bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
         bet_amount = min(bet_amount, chips)
+
+        # === bluff 延續性邏輯 ===
+        bluff_this_street = False
+
+        # 若上一輪已bluff，進入新階段有較高機率繼續bluff
+        if self.is_bluffing and self.last_bluff_street is not None:
+            if game_stage.value > self.last_bluff_street.value:
+                bluff_continue_chance = 0.7 if to_call == 0 else 0.5
+                if np.random.rand() < bluff_continue_chance:
+                    bluff_this_street = True
+                    self.last_bluff_street = game_stage
+                else:
+                    self.is_bluffing = False
+            else:
+                bluff_this_street = True  # 同一階段繼續bluff
+
+        # 若這輪本來就有bluff機率，且勝率低
+        elif to_call == 0 and bet_ratio > 0 and win_rate < adj_thr_low and np.random.rand() < 0.15:
+            bluff_this_street = True
+            self.is_bluffing = True
+            self.last_bluff_street = game_stage
 
         # GTO混合策略與pot odds
         pot_odds = to_call / (pot + to_call) if to_call > 0 else 0
@@ -269,6 +292,8 @@ class PokerBot:
             return ("fold", 0)
 
         if to_call == 0:
+            if bluff_this_street:
+                return ("bet", bet_amount)
             if bet_ratio > 0:
                 if win_rate > adj_thr_high:
                     if r < 0.5:
@@ -289,6 +314,10 @@ class PokerBot:
             else:
                 return ("check", 0)
         else:
+            if bluff_this_street and chips > to_call + min_raise:
+                raise_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call)
+                raise_amount = min(raise_amount, chips)
+                return ("raise", raise_amount)
             raise_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call)
             raise_amount = min(raise_amount, chips)
             if win_rate > adj_thr_high and chips > to_call + min_raise:
