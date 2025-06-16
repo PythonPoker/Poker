@@ -247,17 +247,14 @@ class PokerBot:
         max_bet = max(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
-        # 根據勝率決定下注/加注尺寸
-        if win_rate > adj_thr_high:
-            bet_ratio = max(bet_ratio, 0.8)
-        elif win_rate > adj_thr_mid:
-            bet_ratio = max(bet_ratio, 0.5)
-        elif win_rate > adj_thr_low:
-            bet_ratio = max(bet_ratio, 0.33)
-        else:
-            bet_ratio = 0.0
+        # === 支援超池下注 ===
+        overbet_ratio = 1.0  # 預設最大下注為1倍pot
+        if win_rate > adj_thr_high + 0.08 and r < 0.4:
+            overbet_ratio = np.random.uniform(1.2, 2.0)  # 40%機率超池，1.2~2倍pot
+        elif r < 0.2:
+            overbet_ratio = np.random.uniform(1.2, 2.0)  # 5%機率隨機bluff超池
 
-        bet_amount = max(min_total_bet, int(pot * bet_ratio))
+        bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
         bet_amount = min(bet_amount, chips)
 
         # GTO混合策略與pot odds
@@ -292,7 +289,7 @@ class PokerBot:
             else:
                 return ("check", 0)
         else:
-            raise_amount = max(min_total_bet, int(pot * bet_ratio) + to_call)
+            raise_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call)
             raise_amount = min(raise_amount, chips)
             if win_rate > adj_thr_high and chips > to_call + min_raise:
                 if r < 0.5 and bet_ratio > 0:
