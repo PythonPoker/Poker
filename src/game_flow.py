@@ -6,13 +6,15 @@ from game_stage import GameStage
 from bot import PokerBot
 from action import PlayerAction
 
+NUM_PLAYERS = 6
+
 
 class GameFlow:
     @staticmethod
     def init_game(game_setting):
         deck = Deck()
         deck.shuffle()
-        hands = deck.deal_player_hands(num_players=6, cards_per_player=2)
+        hands = deck.deal_player_hands(num_players=NUM_PLAYERS, cards_per_player=2)
         card_images = deck.load_card_images()
         showed_hands = False
         showed_result = False
@@ -33,32 +35,42 @@ class GameFlow:
         winner_text = ""
         result_time = None
 
-        player_bets = [0, 0]
+        player_bets = [0 for _ in range(NUM_PLAYERS)]
         waiting_for_action = False
         actions_this_round = 0
-        last_actions = ["", ""]
+        last_actions = ["" for _ in range(NUM_PLAYERS)]
 
         pot = 0
 
-        players = [Player(0), Player(1)]
-        bot = PokerBot(1)
-        big_blind_player = random.randint(0, 1)
-        current_player = 1 - big_blind_player
-        players[big_blind_player].set_big_blind(True)
-        players[1 - big_blind_player].set_big_blind(False)
-        acted_this_round = [False, False]
+        players = [Player(i) for i in range(NUM_PLAYERS)]
+        bots = [None] + [PokerBot(i) for i in range(1, NUM_PLAYERS)]  # 玩家1真人，其餘為bot
+
+        # 隨機選一位玩家作為大盲
+        big_blind_player = random.randint(0, NUM_PLAYERS - 1)
+        for i, player in enumerate(players):
+            player.set_big_blind(i == big_blind_player)
+
+        # 小盲玩家（大盲左手邊一位）
+        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        current_player = (big_blind_player + 2) % NUM_PLAYERS  # 大盲左手邊第二位先行
+
+        acted_this_round = [False for _ in range(NUM_PLAYERS)]
 
         bet = 0
         big_blind_amount = 10
         last_raise_amount = big_blind_amount
 
+        # 扣除大盲、小盲籌碼
         if players[big_blind_player].chips >= big_blind_amount:
             players[big_blind_player].chips -= big_blind_amount
             player_bets[big_blind_player] = big_blind_amount
             bet = big_blind_amount
+        small_blind_amount = big_blind_amount // 2
+        if players[small_blind_player].chips >= small_blind_amount:
+            players[small_blind_player].chips -= small_blind_amount
+            player_bets[small_blind_player] = small_blind_amount
 
         W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
-
         player_positions = [
             (W // 2 - 250, H - 160),  # 玩家1（下左）
             (W // 2 + 150, H - 160),  # 玩家2（下右）
@@ -97,8 +109,9 @@ class GameFlow:
             "last_actions": last_actions,
             "pot": pot,
             "players": players,
-            "bot": bot,
+            "bots": bots,
             "big_blind_player": big_blind_player,
+            "small_blind_player": small_blind_player,
             "current_player": current_player,
             "acted_this_round": acted_this_round,
             "bet": bet,
@@ -114,7 +127,7 @@ class GameFlow:
     def reset_game(deck, players, Chips, big_blind_player, big_blind_amount):
         deck = Deck()
         deck.shuffle()
-        hands = deck.deal_player_hands(num_players=6, cards_per_player=2)
+        hands = deck.deal_player_hands(num_players=NUM_PLAYERS, cards_per_player=2)
         community_cards = []
         deal_index = 0
         game_stage = GameStage.PREFLOP
@@ -125,23 +138,34 @@ class GameFlow:
         showdown_time = None
         pot_given = False
         pot_give_time = None
-        big_blind_player = 1 - big_blind_player
-        players[big_blind_player].set_big_blind(True)
-        players[1 - big_blind_player].set_big_blind(False)
+
+        # 輪替大盲
+        big_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        for i, player in enumerate(players):
+            player.set_big_blind(i == big_blind_player)
+
+        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        current_player = (big_blind_player + 2) % NUM_PLAYERS
+
         big_blind_amount = 10
-        player_bets = [0, 0]
-        acted_this_round = [False, False]
+        player_bets = [0 for _ in range(NUM_PLAYERS)]
+        acted_this_round = [False for _ in range(NUM_PLAYERS)]
         bet = 0
         for player in players:
             if player.chips == 0:
                 player.chips = Chips.chips
+        # 扣除大盲、小盲籌碼
         if players[big_blind_player].chips >= big_blind_amount:
             players[big_blind_player].chips -= big_blind_amount
             player_bets[big_blind_player] = big_blind_amount
             bet = big_blind_amount
-        current_player = 1 - big_blind_player
+        small_blind_amount = big_blind_amount // 2
+        if players[small_blind_player].chips >= small_blind_amount:
+            players[small_blind_player].chips -= small_blind_amount
+            player_bets[small_blind_player] = small_blind_amount
+
         last_raise_amount = big_blind_amount
-        last_actions = ["", ""]
+        last_actions = ["" for _ in range(NUM_PLAYERS)]
         bot_action_pending = False  # 新增
         return (
             deck,
