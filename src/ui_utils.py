@@ -71,3 +71,26 @@ class UIUtils:
         pot_x = width // 2 - pot_text.get_width() // 2
         pot_y = community_card_positions[0][1] - 40
         screen.blit(pot_text, (pot_x, pot_y))
+
+    @staticmethod
+    def get_bet_text_pos(start_x, y, hand, card_height, game_setting):
+        """
+        計算下注額顯示在手牌下方、靠近中心的位置
+        """
+        hand_width = len(hand) * 80
+        hand_center_x = start_x + hand_width // 2
+        hand_center_y = y + card_height // 2
+
+        W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
+        center_x, center_y = W // 2, H // 2
+
+        bet_text_offset = 100  # 距離中心的偏移量，可自行調整
+        dx = center_x - hand_center_x
+        dy = center_y - hand_center_y
+        length = (dx ** 2 + dy ** 2) ** 0.5
+        if length == 0:
+            bet_x, bet_y = hand_center_x, hand_center_y
+        else:
+            bet_x = int(hand_center_x + dx / length * bet_text_offset)
+            bet_y = int(hand_center_y + dy / length * bet_text_offset)
+        return bet_x, bet_y

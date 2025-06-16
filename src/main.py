@@ -291,8 +291,12 @@ while running:
         start_x, y = player_positions[i]
         # 籌碼
         UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"])
-        # 下注額
-        UIUtils.draw_bet_text(screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], i)
+
+        # 下注額顯示在面向中心
+        bet_x, bet_y = UIUtils.get_bet_text_pos(start_x, y, hand, game_setting["CARD_HEIGHT"], game_setting)
+        bet_text = font.render(f"{player_bets[i]}", True, (0, 255, 255))
+        bet_text_rect = bet_text.get_rect(center=(bet_x, bet_y))
+        screen.blit(bet_text, bet_text_rect)
 
         # 棄牌玩家不顯示手牌和牌型，但要顯示行動圓點與行動
         if getattr(players[i], "is_folded", False):
