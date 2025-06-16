@@ -94,3 +94,19 @@ class UIUtils:
             bet_x = int(hand_center_x + dx / length * bet_text_offset)
             bet_y = int(hand_center_y + dy / length * bet_text_offset)
         return bet_x, bet_y
+
+    @staticmethod
+    def get_community_card_positions(game_setting):
+        """
+        回傳一個長度為5的list，每個元素是公牌的(x, y)座標
+        """
+        W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
+        CARD_W, CARD_H = game_setting["CARD_WIDTH"], game_setting["CARD_HEIGHT"]
+        positions = [
+            (W // 2 - 2 * 100 - CARD_W // 2, H // 2 - CARD_H // 2),
+            (W // 2 - 100 - CARD_W // 2,     H // 2 - CARD_H // 2),
+            (W // 2 - CARD_W // 2,           H // 2 - CARD_H // 2),
+            (W // 2 + 100 - CARD_W // 2,     H // 2 - CARD_H // 2),
+            (W // 2 + 2 * 100 - CARD_W // 2, H // 2 - CARD_H // 2),
+        ]
+        return positions

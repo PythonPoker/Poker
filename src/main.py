@@ -332,28 +332,7 @@ while running:
         UIUtils.draw_action_on_hand(screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"])
 
     # 公牌
-    community_card_positions = [
-        (
-            game_setting["WIDTH"] // 2 - 2 * 100 - game_setting["CARD_WIDTH"] // 2,
-            game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),
-        (
-            game_setting["WIDTH"] // 2 - 100 - game_setting["CARD_WIDTH"] // 2,
-            game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),
-        (
-            game_setting["WIDTH"] // 2 - game_setting["CARD_WIDTH"] // 2,
-            game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),
-        (
-            game_setting["WIDTH"] // 2 + 100 - game_setting["CARD_WIDTH"] // 2,
-            game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),
-        (
-            game_setting["WIDTH"] // 2 + 2 * 100 - game_setting["CARD_WIDTH"] // 2,
-            game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),
-    ]
+    community_card_positions = UIUtils.get_community_card_positions(game_setting)
     UIUtils.draw_community_cards(screen, card_images, community_cards, community_card_positions)
 
     if community_cards:
