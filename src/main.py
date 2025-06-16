@@ -410,7 +410,7 @@ while running:
                 last_actions,
                 bot_action_pending,
             ) = GameFlow.reset_game(
-                deck, players, Chips, big_blind_player, big_blind_amount
+                deck, players, Chips, big_blind_player, big_blind_amount, bots
             )
             pot = 0
             for player in players:
