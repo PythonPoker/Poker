@@ -295,7 +295,14 @@ class PokerBot:
             if bluff_this_street:
                 return ("bet", bet_amount)
             if bet_ratio > 0:
-                if win_rate > adj_thr_high:
+                # --- 強牌時更積極 ---
+                if game_stage == GameStage.PREFLOP and win_rate > adj_thr_high:
+                    # 翻前頂尖牌力，90%主動下注
+                    if r < 0.9:
+                        return ("bet", bet_amount)
+                    else:
+                        return ("check", 0)
+                elif win_rate > adj_thr_high:
                     if r < 0.5:
                         return ("bet", bet_amount)
                     elif r < 0.8:
