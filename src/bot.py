@@ -1,6 +1,9 @@
 import random
+import pygame
+from game_stage import GameStage
 from card import Deck
 from result import PokerResult
+from action import PlayerAction
 
 
 class PokerBot:
@@ -105,3 +108,72 @@ class PokerBot:
                     return ("fold", 0)
         # fallback: 若沒命中任何條件，預設棄牌
         return ("fold", 0)
+
+    @staticmethod
+    def handle_bot_action(
+        bots,
+        hands,
+        community_cards,
+        player_bets,
+        players,
+        min_raise_amount,
+        to_call,
+        game_stage,
+        current_player,
+        showed_result,
+        pending_next_stage,
+        bot_action_pending,
+        bot_action_time,
+        bot_action_result,
+        raise_input_text,
+        bot_action_delay=1200,
+    ):
+        """
+        處理目前 current_player 為 bot 時的行動
+        回傳 (action, bot_action_pending, bot_action_time, bot_action_result, raise_input_text)
+        """
+        action = None
+        if (
+            current_player != 0
+            and not showed_result
+            and game_stage != GameStage.SHOWDOWN
+            and players[current_player].chips > 0
+            and (not pending_next_stage or any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players)))
+        ):
+            now = pygame.time.get_ticks()
+            if not bot_action_pending:
+                bot_action_time = now
+                try:
+                    bot_action_result = bots[current_player].act(
+                        hands[current_player],
+                        community_cards,
+                        player_bets,
+                        players,
+                        min_raise_amount,
+                        players[current_player].chips,
+                        to_call,
+                        game_stage,
+                        hands=hands,
+                    )
+                except Exception as e:
+                    bot_action_result = ("call", 0)
+                bot_action_pending = True
+            elif now - bot_action_time >= bot_action_delay:
+                if bot_action_result is not None:
+                    bot_action, bot_amount = bot_action_result
+                    if bot_action == "fold":
+                        action = PlayerAction.FOLD
+                    elif bot_action in ("call", "check"):
+                        action = PlayerAction.CALL_OR_CHECK
+                    elif bot_action in ("bet", "raise", "allin"):
+                        if to_call >= players[current_player].chips:
+                            action = PlayerAction.CALL_OR_CHECK
+                        else:
+                            action = PlayerAction.BET_OR_RAISE
+                            raise_input_text = str(bot_amount)
+                else:
+                    action = PlayerAction.CALL_OR_CHECK
+                bot_action_pending = False
+        else:
+            bot_action_pending = False
+        return action, bot_action_pending, bot_action_time, bot_action_result, raise_input_text

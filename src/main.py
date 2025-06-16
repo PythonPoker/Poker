@@ -1,5 +1,5 @@
 import pygame
-from player import Player, all_sprites
+from player import Player
 from card import Deck
 from action import PlayerAction
 from result import PokerResult
@@ -66,7 +66,6 @@ handle_raise_input = PlayerAction.handle_raise_input
 best_five = PokerResult.best_five
 get_hand_type_name = PokerResult.get_hand_type_name
 
-# Main game loop
 running = True
 first_loop = True
 bot_action_delay = 1200  # ms
@@ -82,8 +81,6 @@ while running:
         game_stage, big_blind_amount, last_raise_amount
     )
     min_total_bet = Chips.get_min_total_bet(max_bet, min_raise_amount)
-
-    # 先計算 any_allin
     any_allin = any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players))
 
     # 預設加注金額為最小加注
@@ -92,54 +89,33 @@ while running:
         first_loop = False
     display_raise_input = raise_input_text
 
-    # --- Bot行動 ---
-    if (
-        current_player != 0
-        and not showed_result
-        and game_stage != GameStage.SHOWDOWN
-        and players[current_player].chips > 0
-        and (not pending_next_stage or any_allin)
-    ):
-        now = pygame.time.get_ticks()
-        if not bot_action_pending:
-            bot_action_time = now
-            try:
-                bot_action_result = bots[current_player].act(
-                    hands[current_player],
-                    community_cards,
-                    player_bets,
-                    players,
+    # 事件處理（只在這裡一次！）
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        # 只有輪到真人玩家時才處理按鈕
+        if (
+            not pending_next_stage
+            and not showed_result
+            and game_stage != GameStage.SHOWDOWN
+            and current_player == 0
+            and not any_allin
+        ):
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                action = PlayerAction.get_player_action(button_rects, mouse_pos, (1, 0, 0))
+            elif event.type == pygame.KEYDOWN and raise_input_active:
+                raise_input_text = handle_raise_input(
+                    event,
+                    raise_input_text,
                     min_raise_amount,
                     players[current_player].chips,
-                    to_call,
-                    game_stage,
-                    hands=hands,
                 )
-            except Exception as e:
-                bot_action_result = ("call", 0)
-            bot_action_pending = True
-        elif now - bot_action_time >= bot_action_delay:
-            if bot_action_result is not None:
-                bot_action, bot_amount = bot_action_result
-                if bot_action == "fold":
-                    action = PlayerAction.FOLD
-                elif bot_action in ("call", "check"):
-                    action = PlayerAction.CALL_OR_CHECK
-                elif bot_action in ("bet", "raise", "allin"):
-                    if to_call >= players[current_player].chips:
-                        action = PlayerAction.CALL_OR_CHECK
-                    else:
-                        action = PlayerAction.BET_OR_RAISE
-                        raise_input_text = str(bot_amount)
-            else:
-                action = PlayerAction.CALL_OR_CHECK
-            bot_action_pending = False
-    else:
-        bot_action_pending = False
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
+                if raise_input_text.isdigit():
+                    max_raise = players[current_player].chips
+                    if int(raise_input_text) > max_raise:
+                        raise_input_text = str(max_raise)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 raise_input_rect = PlayerAction.get_raise_input_rect(button_rects)
@@ -155,27 +131,72 @@ while running:
                     else:
                         raise_input_text = str(min_total_bet)
 
-            elif event.type == pygame.KEYDOWN and raise_input_active:
-                raise_input_text = handle_raise_input(
-                    event,
-                    raise_input_text,
-                    min_raise_amount,
-                    players[current_player].chips,
-                )
-                if raise_input_text.isdigit():
-                    max_raise = players[current_player].chips
-                    if int(raise_input_text) > max_raise:
-                        raise_input_text = str(max_raise)
+    # --- Bot行動 ---
+    action_bot, bot_action_pending, bot_action_time, bot_action_result, raise_input_text = PokerBot.handle_bot_action(
+        bots,
+        hands,
+        community_cards,
+        player_bets,
+        players,
+        min_raise_amount,
+        to_call,
+        game_stage,
+        current_player,
+        showed_result,
+        pending_next_stage,
+        bot_action_pending,
+        bot_action_time,
+        bot_action_result,
+        raise_input_text,
+        bot_action_delay
+    )
+    if not bot_action_pending and action_bot is not None and current_player != 0:
+        action = action_bot
 
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                if not showed_result and current_player == 0:
-                    mouse_pos = pygame.mouse.get_pos()
-                    action = PlayerAction.get_player_action(
-                        button_rects, mouse_pos, (1, 0, 0)
-                    )
-
-    # Update game state
-    all_sprites.update()
+    # 行動處理（真人或 bot）
+    if action is not None and not bot_action_pending:
+        result = ActionHandler.handle_action(
+            action,
+            players,
+            player_bets,
+            last_actions,
+            acted_this_round,
+            current_player,
+            game_stage,
+            pot,
+            bet,
+            raise_input_text,
+            min_raise_amount,
+            display_raise_input,
+            big_blind_player,
+            showed_hands,
+            showed_result,
+            result_time,
+            pending_next_stage,
+            actions_this_round,
+            showdown_time,
+        )
+        actions_this_round = result["actions_this_round"]
+        acted_this_round = result["acted_this_round"]
+        current_player = result["current_player"]
+        last_actions = result["last_actions"]
+        player_bets = result["player_bets"]
+        pot = result["pot"]
+        bet = result["bet"]
+        showed_result = result["showed_result"]
+        result_time = result["result_time"]
+        if not pending_next_stage and result["pending_next_stage"]:
+            next_stage_time = pygame.time.get_ticks()
+        pending_next_stage = result["pending_next_stage"]
+        game_stage = result["game_stage"]
+        showed_hands = result["showed_hands"]
+        showdown_time = result["showdown_time"]
+        raise_input_text = result["raise_input_text"]
+        winner_text = result["winner_text"] if result["winner_text"] else winner_text
+        pot_given = result.get("pot_given", pot_given)
+        pot_give_time = result.get("pot_give_time", pot_give_time)
+        if result.get("continue_flag"):
+            continue
 
     # Update screen
     screen.fill((0, 0, 0))

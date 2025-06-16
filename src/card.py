@@ -26,7 +26,6 @@ class Deck:
             for _ in range(cards_per_player):
                 hand.append(self.cards.pop(0))
             hands.append(hand)
-            print(f"發牌給玩家：{hand}")
         return hands
 
     def deal_community_cards(
