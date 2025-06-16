@@ -108,6 +108,7 @@ class PokerBot:
         game_stage,
         hands=None,
         dealer_index=0,
+        last_actions=None,  # 新增：傳入本輪所有玩家的行動記錄
     ):
         chips = players[self.player_index].chips
         num_players = len(players)
@@ -118,28 +119,71 @@ class PokerBot:
         position = self.get_position(self.player_index, dealer_index, num_players)
         thr_high, thr_mid, thr_low = self.get_gto_thresholds(position, game_stage)
 
+        # === 統計本輪其他玩家的行動 ===
+        num_raises = 0
+        num_calls = 0
+        num_folds = 0
+        num_allins = 0
+        if last_actions:
+            for i, act in enumerate(last_actions):
+                if i == self.player_index:
+                    continue
+                if act in ("RAISE", "BET"):
+                    num_raises += 1
+                elif act == "CALL":
+                    num_calls += 1
+                elif act == "FOLD":
+                    num_folds += 1
+                elif act == "ALL-IN":
+                    num_allins += 1
+
+        # === 根據場上情況調整門檻與下注比例 ===
+        # 多人加注/全下時，門檻提高
+        adj_thr_high = thr_high
+        adj_thr_mid = thr_mid
+        adj_thr_low = thr_low
+        bet_ratio = 0.5
+
+        if num_allins > 0:
+            adj_thr_high += 0.10
+            adj_thr_mid += 0.10
+            bet_ratio = 1.0  # 有人all-in時，bot只會跟進或all-in
+        elif num_raises >= 2:
+            adj_thr_high += 0.08
+            adj_thr_mid += 0.08
+            bet_ratio = 0.8
+        elif num_raises == 1:
+            adj_thr_high += 0.04
+            adj_thr_mid += 0.04
+            bet_ratio = 0.7
+        elif num_folds >= num_players // 2:
+            # 很多人棄牌時，bot可以更鬆
+            adj_thr_high -= 0.03
+            adj_thr_mid -= 0.03
+            bet_ratio = 0.7
+        elif num_calls >= num_players // 2:
+            bet_ratio = 0.6
+
         r = np.random.rand()
         max_bet = max(player_bets)
         pot = sum(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
         # 根據勝率決定下注/加注尺寸
-        if win_rate > 0.75:
-            bet_ratio = 0.8  # 80% pot
-        elif win_rate > 0.6:
-            bet_ratio = 0.5  # 50% pot
-        elif win_rate > 0.45:
-            bet_ratio = 0.33 # 33% pot
+        if win_rate > adj_thr_high:
+            bet_ratio = max(bet_ratio, 0.8)
+        elif win_rate > adj_thr_mid:
+            bet_ratio = max(bet_ratio, 0.5)
+        elif win_rate > adj_thr_low:
+            bet_ratio = max(bet_ratio, 0.33)
         else:
             bet_ratio = 0.0
 
-        # 下注時
         bet_amount = max(min_total_bet, int(pot * bet_ratio))
         bet_amount = min(bet_amount, chips)
 
         if to_call == 0:
             if bet_ratio > 0:
-                # 有下注動機
                 if chips > bet_amount and r < 0.7:
                     if bet_amount >= chips:
                         return ("allin", chips)
@@ -149,23 +193,22 @@ class PokerBot:
             else:
                 return ("check", 0)
         else:
-            # 加注時也根據勝率決定加注尺寸
             raise_amount = max(min_total_bet, int(pot * bet_ratio) + to_call)
             raise_amount = min(raise_amount, chips)
-            if win_rate > thr_high and chips > to_call + min_raise:
+            if win_rate > adj_thr_high and chips > to_call + min_raise:
                 if r < 0.6 and bet_ratio > 0:
                     if raise_amount >= chips:
                         return ("allin", chips)
                     return ("raise", raise_amount)
                 else:
                     return ("call", to_call)
-            elif win_rate > thr_mid and chips > to_call:
+            elif win_rate > adj_thr_mid and chips > to_call:
                 if r < 0.7:
                     return ("call", to_call)
                 else:
                     return ("fold", 0)
             elif chips <= to_call:
-                if win_rate > thr_low:
+                if win_rate > adj_thr_low:
                     return ("allin", chips)
                 else:
                     return ("fold", 0)
