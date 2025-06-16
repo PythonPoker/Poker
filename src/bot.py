@@ -7,9 +7,57 @@ from result import PokerResult
 from action import PlayerAction
 
 
+class OpponentModel:
+    def __init__(self):
+        self.total_hands = 0
+        self.raises = 0
+        self.calls = 0
+        self.folds = 0
+        self.allins = 0
+        self.big_raises = 0
+
+    def update(self, action, bet_amount, pot, is_folded):
+        self.total_hands += 1
+        if is_folded:
+            self.folds += 1
+        elif action in ("RAISE", "BET"):
+            self.raises += 1
+            if bet_amount > pot * 0.7:
+                self.big_raises += 1
+        elif action == "CALL":
+            self.calls += 1
+        elif action == "ALL-IN":
+            self.allins += 1
+
+    def style(self):
+        if self.total_hands == 0:
+            return "unknown"
+        raise_freq = self.raises / self.total_hands
+        call_freq = self.calls / self.total_hands
+        fold_freq = self.folds / self.total_hands
+        big_raise_freq = self.big_raises / self.total_hands
+        if raise_freq > 0.35 or big_raise_freq > 0.15:
+            return "aggressive"
+        elif fold_freq > 0.5:
+            return "tight"
+        elif call_freq > 0.5:
+            return "loose"
+        else:
+            return "balanced"
+
+
+# 全局保存對手模型
+GLOBAL_OPP_MODELS = None
+
+
 class PokerBot:
-    def __init__(self, player_index):
+    def __init__(self, player_index, num_players=6):
+        global GLOBAL_OPP_MODELS
         self.player_index = player_index
+        self.num_players = num_players
+        if GLOBAL_OPP_MODELS is None or len(GLOBAL_OPP_MODELS) != num_players:
+            GLOBAL_OPP_MODELS = [OpponentModel() for _ in range(num_players)]
+        self.opp_models = GLOBAL_OPP_MODELS
 
     def get_position(self, player_index, dealer_index, num_players):
         """
@@ -49,10 +97,12 @@ class PokerBot:
         # 預設
         return thresholds.get(position, (0.7, 0.55, 0.4))
 
-    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=10000):
+    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=300):
         """
         蒙地卡羅模擬，估算bot在目前情境下的勝率（支援多玩家）
         """
+        import random
+
         wins = 0
         draws = 0
         total = 0
@@ -121,25 +171,47 @@ class PokerBot:
 
         # 統計場上行動
         num_raises = num_calls = num_folds = num_allins = 0
-        if last_actions:
-            for i, act in enumerate(last_actions):
-                if i == self.player_index:
-                    continue
-                if act in ("RAISE", "BET"):
-                    num_raises += 1
-                elif act == "CALL":
-                    num_calls += 1
-                elif act == "FOLD":
-                    num_folds += 1
-                elif act == "ALL-IN":
-                    num_allins += 1
+        pot = sum(player_bets)
+        for i, act in enumerate(last_actions or []):
+            if i == self.player_index or getattr(players[i], "is_folded", False):
+                continue
+            # 更新對手模型
+            self.opp_models[i].update(
+                act,
+                player_bets[i],
+                pot,
+                getattr(players[i], "is_folded", False)
+            )
+            if act in ("RAISE", "BET"):
+                num_raises += 1
+            elif act == "CALL":
+                num_calls += 1
+            elif act == "FOLD":
+                num_folds += 1
+            elif act == "ALL-IN":
+                num_allins += 1
 
-        # 動態調整門檻
+        # 根據對手風格調整門檻
         adj_thr_high = thr_high
         adj_thr_mid = thr_mid
         adj_thr_low = thr_low
         bet_ratio = 0.5
 
+        for i, opp in enumerate(self.opp_models):
+            if i == self.player_index or getattr(players[i], "is_folded", False):
+                continue
+            style = opp.style()
+            if style == "aggressive":
+                adj_thr_high += 0.05
+                adj_thr_mid += 0.05
+            elif style == "tight":
+                adj_thr_high -= 0.03
+                adj_thr_mid -= 0.03
+            elif style == "loose":
+                adj_thr_high -= 0.05
+                adj_thr_mid -= 0.05
+
+        # 根據本輪行動調整
         if num_allins > 0:
             adj_thr_high += 0.10
             adj_thr_mid += 0.10
@@ -173,7 +245,6 @@ class PokerBot:
 
         r = np.random.rand()
         max_bet = max(player_bets)
-        pot = sum(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
         # 根據勝率決定下注/加注尺寸
@@ -189,7 +260,7 @@ class PokerBot:
         bet_amount = max(min_total_bet, int(pot * bet_ratio))
         bet_amount = min(bet_amount, chips)
 
-        # === GTO混合策略與pot odds ===
+        # GTO混合策略與pot odds
         pot_odds = to_call / (pot + to_call) if to_call > 0 else 0
 
         # 面對大額加注更謹慎
@@ -201,8 +272,6 @@ class PokerBot:
             return ("fold", 0)
 
         if to_call == 0:
-            if position in ("BTN", "CO","SB","BB") and to_call == 0 and r < 0.30:
-                return ("bet", bet_amount)
             if bet_ratio > 0:
                 if win_rate > adj_thr_high:
                     if r < 0.5:
