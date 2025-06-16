@@ -177,12 +177,9 @@ class PokerResult:
             screen.blit(text_surface, text_rect)
             # 2秒後加pot到勝者，只加一次
             if not pot_given and result_time and now - result_time > 2000:
-                # 找出所有獲勝玩家
-                winners = []
-                if "WIN" in winner_text:
-                    for i in range(len(players)):
-                        if f"P{i+1}" in winner_text and not getattr(players[i], "is_folded", False):
-                            winners.append(i)
+                # 重新比一次，確保只分給未棄牌且真正勝出的玩家
+                active_hands = [hand if not getattr(players[i], "is_folded", False) else [] for i, hand in enumerate(hands)]
+                winners, max_rank = PokerResult.compare_all_players(active_hands, community_cards)
                 if winners:
                     share = pot // len(winners)
                     for i in winners:
