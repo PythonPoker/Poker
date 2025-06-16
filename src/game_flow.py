@@ -45,14 +45,14 @@ class GameFlow:
         players = [Player(i) for i in range(NUM_PLAYERS)]
         bots = [None] + [PokerBot(i) for i in range(1, NUM_PLAYERS)]  # 玩家1真人，其餘為bot
 
-        # 隨機選一位玩家作為大盲
-        big_blind_player = random.randint(0, NUM_PLAYERS - 1)
+        # 隨機選一位玩家作為小盲
+        small_blind_player = random.randint(0, NUM_PLAYERS - 1)
+        big_blind_player = (small_blind_player + 1) % NUM_PLAYERS
         for i, player in enumerate(players):
             player.set_big_blind(i == big_blind_player)
 
-        # 小盲玩家（大盲左手邊一位）
-        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
-        current_player = (big_blind_player + 2) % NUM_PLAYERS  # 大盲左手邊第二位先行
+        # Preflop 第一位行動玩家為大盲左手邊一位
+        current_player = (big_blind_player + 1) % NUM_PLAYERS  # 大盲左手邊第二位先行
 
         acted_this_round = [False for _ in range(NUM_PLAYERS)]
 
@@ -72,12 +72,12 @@ class GameFlow:
 
         W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
         player_positions = [
-            (W // 2 - 250, H - 160),  # 玩家1（下左）
-            (W // 2 + 150, H - 160),  # 玩家2（下右）
-            (W - 180, H // 2 + 60),   # 玩家3（右下）
-            (W - 180, H // 2 - 120),  # 玩家4（右上）
-            (W // 2 - 250, 60),       # 玩家5（上左）
-            (W // 2 + 150, 60),       # 玩家6（上右）
+            (W // 2 - 80, H - 140),      # 玩家1（中下，真人）
+            (100, H - 220),              # 玩家2（左下）
+            (100, 120),                  # 玩家3（左上）
+            (W // 2 - 80, 40),           # 玩家4（中上）
+            (W - 180, 120),              # 玩家5（右上）
+            (W - 180, H - 220),          # 玩家6（右下）
         ]
 
         bot_action_pending = False
@@ -139,13 +139,14 @@ class GameFlow:
         pot_given = False
         pot_give_time = None
 
-        # 輪替大盲
-        big_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        # 輪替小盲
+        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+        big_blind_player = (small_blind_player + 1) % NUM_PLAYERS
         for i, player in enumerate(players):
             player.set_big_blind(i == big_blind_player)
 
-        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
-        current_player = (big_blind_player + 2) % NUM_PLAYERS
+        # Preflop 第一位行動玩家為大盲左手邊一位
+        current_player = (big_blind_player + 1) % NUM_PLAYERS
 
         big_blind_amount = 10
         player_bets = [0 for _ in range(NUM_PLAYERS)]

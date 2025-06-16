@@ -239,11 +239,6 @@ while running:
         chip_text_y = y + game_setting["CARD_HEIGHT"] // 2 - chip_text.get_height() // 2
         screen.blit(chip_text, (chip_text_x, chip_text_y))
 
-        action_text = font.render(last_actions[i], True, (200, 200, 0))
-        action_text_x = chip_text_x
-        action_text_y = chip_text_y + chip_text.get_height() + 5
-        screen.blit(action_text, (action_text_x, action_text_y))
-
         bet_display = f"{player_bets[i]}"
         bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
         bet_text_x = start_x + (len(hand) * 80 - bet_text.get_width()) // 2
@@ -288,6 +283,29 @@ while running:
             dot_x = start_x + len(hand) * 80 + 30
             dot_y = y + game_setting["CARD_HEIGHT"] // 2
             pygame.draw.circle(screen, (255, 215, 0), (dot_x, dot_y), dot_radius)
+            
+        # ======= 將行動顯示在手牌正中央（黑底白字，小字體，未行動時隱藏） =======
+        if last_actions[i]:  # 只有已行動才顯示
+            action_font = pygame.font.SysFont(None, 24)  # 小字體
+            action_text = action_font.render(last_actions[i], True, (255, 255, 255))
+            hand_width = len(hand) * 80
+            hand_height = game_setting["CARD_HEIGHT"]
+            # 計算手牌正中央
+            action_bg_width = action_text.get_width() + 12
+            action_bg_height = action_text.get_height() + 6
+            action_bg_x = start_x + (hand_width - action_bg_width) // 2
+            action_bg_y = y + (hand_height - action_bg_height) // 2
+            # 畫黑底圓角矩形
+            pygame.draw.rect(
+                screen, (0, 0, 0),
+                (action_bg_x, action_bg_y, action_bg_width, action_bg_height),
+                border_radius=8
+            )
+            # 白字置中
+            action_text_x = action_bg_x + (action_bg_width - action_text.get_width()) // 2
+            action_text_y = action_bg_y + (action_bg_height - action_text.get_height()) // 2
+            screen.blit(action_text, (action_text_x, action_text_y))
+        # ======= end =======
 
     # 顯示勝負結果
     if game_stage == GameStage.SHOWDOWN:
