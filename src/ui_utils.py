@@ -138,7 +138,7 @@ class UIUtils:
             edge_x, edge_y = hand_center_x, hand_center_y
         else:
             # 偏移手牌寬度/2 + 18px（讓數字在手牌外圍一點點）
-            offset = hand_width // 2 + 18
+            offset = hand_width // 2 + 50
             edge_x = int(hand_center_x + dx / length * offset)
             edge_y = int(hand_center_y + dy / length * offset)
 
