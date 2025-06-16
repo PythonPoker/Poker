@@ -7,33 +7,52 @@ class PokerBot:
     def __init__(self, player_index):
         self.player_index = player_index
 
-    def estimate_win_rate(self, hand, community_cards, hands, num_simulations=500):
+    def estimate_win_rate(self, hand, community_cards, hands, num_simulations=300):
         """
-        蒙地卡羅模擬，估算bot在目前情境下的勝率
+        蒙地卡羅模擬，估算bot在目前情境下的勝率（支援多玩家）
         """
         wins = 0
         draws = 0
         total = 0
-        # 找出未出現的牌
-        used_cards = set(community_cards + hand + hands[1 - self.player_index])
+
+        # 找出已知牌（自己的手牌、所有已知手牌、已知公牌）
+        used_cards = set(community_cards + hand)
+        for i, h in enumerate(hands):
+            if i != self.player_index and h:
+                used_cards.update(h)
+
         deck = Deck()
         deck.cards = [c for c in deck.cards if c not in used_cards]
 
+        num_players = len(hands)
         for _ in range(num_simulations):
             sim_deck = deck.cards[:]
             random.shuffle(sim_deck)
-            opp_hand = sim_deck[:2]
-            sim_deck = sim_deck[2:]
+            # 為每個對手分配手牌
+            sim_hands = []
+            for i in range(num_players):
+                if i == self.player_index:
+                    sim_hands.append(hand)
+                elif hands[i]:  # 對手未棄牌
+                    sim_hands.append([sim_deck.pop(), sim_deck.pop()])
+                else:
+                    sim_hands.append([])  # 已棄牌玩家
+
+            # 發滿公牌
             sim_community = community_cards[:]
             while len(sim_community) < 5:
                 sim_community.append(sim_deck.pop())
-            cmp = PokerResult.compare_players(hand, opp_hand, sim_community)
-            if cmp == 1:
-                wins += 1
-            elif cmp == 0:
-                draws += 1
+
+            # 比牌
+            winners, _ = PokerResult.compare_all_players(sim_hands, sim_community)
+            if self.player_index in winners:
+                if len(winners) == 1:
+                    wins += 1
+                else:
+                    draws += 1 / len(winners)
             total += 1
-        return (wins + draws * 0.5) / total if total > 0 else 0.0
+
+        return (wins + draws) / total if total > 0 else 0.0
 
     def act(
         self,
@@ -54,7 +73,7 @@ class PokerBot:
 
         # 蒙地卡羅估算勝率
         win_rate = self.estimate_win_rate(
-            hand, community_cards, hands, num_simulations=300
+            hand, community_cards, hands, num_simulations=200
         )
 
         # 決策邏輯（可依需求調整閾值）
