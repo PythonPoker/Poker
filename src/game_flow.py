@@ -139,6 +139,9 @@ class GameFlow:
         pot_given = False
         pot_give_time = None
 
+        for player in players:
+            player.is_folded = False
+
         # 輪替小盲
         small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
         big_blind_player = (small_blind_player + 1) % NUM_PLAYERS

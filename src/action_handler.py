@@ -54,16 +54,12 @@ class ActionHandler:
 
         if action == PlayerAction.FOLD:
             last_actions[current_player] = "FOLD"
-            # 棄牌玩家手牌設為空，代表已棄牌
-            player_bets[current_player] = 0
-            players[current_player].chips = 0  # 也可用其他方式標記已棄牌
+            players[current_player].fold()  # 標記已棄牌
 
-            # 判斷剩下幾人未棄牌
-            active_players = [
-                i for i, p in enumerate(players) if p.chips > 0 or player_bets[i] > 0
-            ]
-            if len(active_players) == 1:
-                winner = active_players[0]
+            # 只剩一個未棄牌玩家才直接結束（不管籌碼，只看 is_folded）
+            not_folded_players = [i for i, p in enumerate(players) if not getattr(p, "is_folded", False)]
+            if len(not_folded_players) == 1:
+                winner = not_folded_players[0]
                 game_stage = GameStage.SHOWDOWN
                 showed_hands = True
                 showed_result = False
