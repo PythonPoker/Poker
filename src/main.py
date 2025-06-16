@@ -292,10 +292,11 @@ while running:
         # 籌碼
         UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"])
 
-        # 下注額顯示在手牌邊緣，朝向公牌
-        UIUtils.draw_bet_text_on_hand_edge_toward_community(
-            screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], game_setting
-        )
+        # 只顯示本回合有下注的玩家（不論是否棄牌）
+        if player_bets[i] > 0:
+            UIUtils.draw_bet_text_on_hand_edge_toward_community(
+                screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], game_setting
+            )
 
         # 棄牌玩家不顯示手牌和牌型
         if getattr(players[i], "is_folded", False):

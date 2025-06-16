@@ -181,7 +181,7 @@ class PokerResult:
                 winners = []
                 if "WIN" in winner_text:
                     for i in range(len(players)):
-                        if f"P{i+1}" in winner_text:
+                        if f"P{i+1}" in winner_text and not getattr(players[i], "is_folded", False):
                             winners.append(i)
                 if winners:
                     share = pot // len(winners)
