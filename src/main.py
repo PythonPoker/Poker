@@ -293,6 +293,19 @@ while running:
         UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"])
         # 下注額
         UIUtils.draw_bet_text(screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], i)
+
+        # 棄牌玩家不顯示手牌和牌型，但要顯示行動圓點與行動
+        if getattr(players[i], "is_folded", False):
+            # 行動圓點
+            UIUtils.draw_action_dot(
+                screen,
+                i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN,
+                start_x, y, hand, game_setting["CARD_HEIGHT"]
+            )
+            # 行動顯示
+            UIUtils.draw_action_on_hand(screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"])
+            continue  # 跳過手牌和牌型
+
         # 手牌
         show_hand = (i == 0) or (i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN))
         UIUtils.draw_hand(screen, hand, card_images, start_x, y, show_hand)
