@@ -142,9 +142,9 @@ class GameFlow:
         for player in players:
             player.is_folded = False
 
-        # 輪替小盲
-        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
-        big_blind_player = (small_blind_player + 1) % NUM_PLAYERS
+        # 輪替小盲與大盲：都往下移動一位
+        small_blind_player = (big_blind_player) % NUM_PLAYERS
+        big_blind_player = (big_blind_player + 1) % NUM_PLAYERS
         for i, player in enumerate(players):
             player.set_big_blind(i == big_blind_player)
 
