@@ -14,13 +14,14 @@ class Deck:
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def deal_player_hands(self, num_players=2, cards_per_player=2):
+    def deal_player_hands(self, num_players=6, cards_per_player=2):
         hands = []
         for _ in range(num_players):
             hand = []
             for _ in range(cards_per_player):
                 hand.append(self.cards.pop(0))
             hands.append(hand)
+            print(f"發牌給玩家：{hand}")
         return hands
 
     def deal_community_cards(

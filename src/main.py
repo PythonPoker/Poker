@@ -23,6 +23,14 @@ pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
 game_state = GameFlow.init_game(game_setting)
+NUM_PLAYERS = 6
+players = [Player(i) for i in range(NUM_PLAYERS)]
+player_bets = [0 for _ in range(NUM_PLAYERS)]
+last_actions = ["" for _ in range(NUM_PLAYERS)]
+acted_this_round = [False for _ in range(NUM_PLAYERS)]
+# 只讓第2~6位是bot
+bot = PokerBot(1)
+bots = [None] + [PokerBot(i) for i in range(1, NUM_PLAYERS)]
 # Create a player instance
 deck = game_state["deck"]
 hands = game_state["hands"]

@@ -12,7 +12,7 @@ class GameFlow:
     def init_game(game_setting):
         deck = Deck()
         deck.shuffle()
-        hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
+        hands = deck.deal_player_hands(num_players=6, cards_per_player=2)
         card_images = deck.load_card_images()
         showed_hands = False
         showed_result = False
@@ -57,12 +57,15 @@ class GameFlow:
             player_bets[big_blind_player] = big_blind_amount
             bet = big_blind_amount
 
+        W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
+
         player_positions = [
-            (
-                game_setting["WIDTH"] // 2 - (len(hands[0]) * 80) // 2,
-                game_setting["HEIGHT"] - game_setting["CARD_HEIGHT"] - 40,
-            ),
-            (game_setting["WIDTH"] // 2 - (len(hands[1]) * 80) // 2, 40),
+            (W // 2 - 250, H - 160),  # 玩家1（下左）
+            (W // 2 + 150, H - 160),  # 玩家2（下右）
+            (W - 180, H // 2 + 60),   # 玩家3（右下）
+            (W - 180, H // 2 - 120),  # 玩家4（右上）
+            (W // 2 - 250, 60),       # 玩家5（上左）
+            (W // 2 + 150, 60),       # 玩家6（上右）
         ]
 
         bot_action_pending = False
@@ -111,7 +114,7 @@ class GameFlow:
     def reset_game(deck, players, Chips, big_blind_player, big_blind_amount):
         deck = Deck()
         deck.shuffle()
-        hands = deck.deal_player_hands(num_players=2, cards_per_player=2)
+        hands = deck.deal_player_hands(num_players=6, cards_per_player=2)
         community_cards = []
         deal_index = 0
         game_stage = GameStage.PREFLOP
