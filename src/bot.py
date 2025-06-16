@@ -115,15 +115,17 @@ class PokerBot:
             hand, community_cards, hands, players, num_simulations=200
         )
 
-        # 取得位置
         position = self.get_position(self.player_index, dealer_index, num_players)
         thr_high, thr_mid, thr_low = self.get_gto_thresholds(position, game_stage)
 
         r = np.random.rand()
+        max_bet = max(player_bets)
+        min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
+
         if to_call == 0:
             if win_rate > thr_high:
-                if r < 0.7 and chips > min_raise:
-                    bet_amount = min(min_raise * 2, chips)
+                if r < 0.7 and chips > min_total_bet:
+                    bet_amount = min(min_total_bet, chips)
                     if bet_amount >= chips:
                         return ("allin", chips)
                     return ("bet", bet_amount)
@@ -133,13 +135,13 @@ class PokerBot:
                 if r < 0.8:
                     return ("check", 0)
                 else:
-                    return ("bet", min(min_raise, chips))
+                    return ("bet", min(min_total_bet, chips))
             else:
                 return ("check", 0)
         else:
             if win_rate > thr_high and chips > to_call + min_raise:
                 if r < 0.6:
-                    raise_amount = min(to_call + min_raise * 2, chips)
+                    raise_amount = min(max_bet + min_raise, chips)
                     if raise_amount >= chips:
                         return ("allin", chips)
                     return ("raise", raise_amount)
