@@ -1,10 +1,6 @@
 import pygame
-import random
-import os
 from player import Player, all_sprites
-from pygame.sprite import Sprite
 from card import Deck
-from enum import Enum, auto
 from action import PlayerAction
 from result import PokerResult
 from chips import Chips
@@ -12,26 +8,21 @@ from game_stage import GameStage
 from game_setting import load_game_settings
 from bot import PokerBot
 from game_flow import GameFlow
-from action_handler import handle_action
+from action_handler import ActionHandler
 
 # Initialize Pygame and create a window
 pygame.init()
 game_setting = load_game_settings()
-#print(game_setting)
 screen = pygame.display.set_mode((game_setting["WIDTH"], game_setting["HEIGHT"]))
 pygame.display.set_caption("Python Poker")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 36)
+
+# 遊戲初始化
 game_state = GameFlow.init_game(game_setting)
 NUM_PLAYERS = 6
-players = [Player(i) for i in range(NUM_PLAYERS)]
-player_bets = [0 for _ in range(NUM_PLAYERS)]
-last_actions = ["" for _ in range(NUM_PLAYERS)]
-acted_this_round = [False for _ in range(NUM_PLAYERS)]
-# 只讓第2~6位是bot
-bot = PokerBot(1)
-bots = [None] + [PokerBot(i) for i in range(1, NUM_PLAYERS)]
-# Create a player instance
+
+# 取出狀態
 deck = game_state["deck"]
 hands = game_state["hands"]
 card_images = game_state["card_images"]
@@ -56,7 +47,7 @@ actions_this_round = game_state["actions_this_round"]
 last_actions = game_state["last_actions"]
 pot = game_state["pot"]
 players = game_state["players"]
-bot = game_state["bot"]
+bots = game_state["bots"]
 big_blind_player = game_state["big_blind_player"]
 current_player = game_state["current_player"]
 acted_this_round = game_state["acted_this_round"]
@@ -71,15 +62,14 @@ bot_action_result = game_state["bot_action_result"]
 draw_action_buttons = PlayerAction.draw_action_buttons
 get_button_rects = PlayerAction.get_button_rects
 handle_raise_input = PlayerAction.handle_raise_input
-last_mouse_check = pygame.time.get_ticks()
-compare_players = PokerResult.compare_players
-hand_rank = PokerResult.hand_rank
-get_hand_type_name = PokerResult.get_hand_type_name
 best_five = PokerResult.best_five
+get_hand_type_name = PokerResult.get_hand_type_name
 
 # Main game loop
 running = True
 first_loop = True
+bot_action_delay = 1200  # ms
+
 while running:
     clock.tick(game_setting["FPS"])
     button_rects = get_button_rects(game_setting["WIDTH"], game_setting["HEIGHT"])
@@ -101,76 +91,48 @@ while running:
         first_loop = False
     display_raise_input = raise_input_text
 
-    # --- Bot行動（ALL-IN 狀態下也允許 bot 行動）---
+    # --- Bot行動 ---
     if (
-        current_player == 1
+        current_player != 0
         and not showed_result
         and game_stage != GameStage.SHOWDOWN
-        and players[1].chips > 0  # Only act if bot has chips left
+        and players[current_player].chips > 0
         and (not pending_next_stage or any_allin)
-        and not (players[0].chips == 0 and players[1].chips == 0)
     ):
-        current_time = pygame.time.get_ticks()
-        
-        # 检查是否需要强制CALL的情况
-        player_all_in = players[0].chips == 0 and player_bets[0] > 0
-        player_overbet = player_bets[0] > player_bets[1] + players[1].chips
-        force_call = player_all_in or player_overbet
-        
+        now = pygame.time.get_ticks()
         if not bot_action_pending:
-            #print(f"Bot starting to act - game stage: {game_stage}, any_allin: {any_allin}, player_all_in: {player_all_in}, player_overbet: {player_overbet}, bot chips: {players[1].chips}")
-            bot_action_time = current_time
-            
-            # 如果玩家ALL-IN或超额下注，直接强制机器人CALL
-            if force_call:
-                #print("Player is ALL-IN or overbet, forcing bot to CALL")
+            bot_action_time = now
+            try:
+                bot_action_result = bots[current_player].act(
+                    hands[current_player],
+                    community_cards,
+                    player_bets,
+                    players,
+                    min_raise_amount,
+                    players[current_player].chips,
+                    to_call,
+                    game_stage,
+                    hands=hands,
+                )
+            except Exception as e:
                 bot_action_result = ("call", 0)
-                bot_action_pending = True
-            else:
-                try:
-                    bot_action_result = bot.act(
-                        hands[1],
-                        community_cards,
-                        player_bets,
-                        players,
-                        min_raise_amount,
-                        players[1].chips,
-                        to_call,
-                        game_stage,
-                        hands=hands,
-                    )
-                    #print(f"Bot decided action: {bot_action_result}")
-                except Exception as e:
-                    #print(f"Error in bot.act(): {e}")
-                    bot_action_result = ("call", 0)  # Default to call if there's an error
-                bot_action_pending = True
-        elif current_time - bot_action_time >= 2000:
+            bot_action_pending = True
+        elif now - bot_action_time >= bot_action_delay:
             if bot_action_result is not None:
                 bot_action, bot_amount = bot_action_result
-                
-                # 如果需要强制CALL，不管机器人决定什么，都强制它CALL
-                if force_call:
-                    action = PlayerAction.CALL_OR_CHECK
-                    #print("Forcing bot to CALL due to player ALL-IN or overbet")
-                elif bot_action == "fold":
+                if bot_action == "fold":
                     action = PlayerAction.FOLD
                 elif bot_action in ("call", "check"):
                     action = PlayerAction.CALL_OR_CHECK
                 elif bot_action in ("bet", "raise", "allin"):
-                    # 检查是否能进行加注/下注
-                    if to_call >= players[1].chips:
-                        # 如果跟注金额已经超过机器人所有筹码，强制CALL
-                        #print("Call amount exceeds bot chips, forcing CALL instead of RAISE")
+                    if to_call >= players[current_player].chips:
                         action = PlayerAction.CALL_OR_CHECK
                     else:
                         action = PlayerAction.BET_OR_RAISE
                         raise_input_text = str(bot_amount)
             else:
-                # Handle None result
-                #print("Bot returned None action - defaulting to call/check")
                 action = PlayerAction.CALL_OR_CHECK
             bot_action_pending = False
-            #print(f"Bot action completed: {action}")
     else:
         bot_action_pending = False
         for event in pygame.event.get():
@@ -183,16 +145,13 @@ while running:
                 if raise_input_rect and raise_input_rect.collidepoint(mouse_pos):
                     raise_input_active = True
                 else:
-                    # 點擊框外
                     raise_input_active = False
-                    # 若玩家輸入的內容為空字串，才自動補最小加注
                     if raise_input_text == "":
                         raise_input_text = str(min_total_bet)
                     elif raise_input_text.isdigit():
                         if int(raise_input_text) < min_total_bet:
                             raise_input_text = str(min_total_bet)
                     else:
-                        # 若不是數字且不是空字串，補最小加注
                         raise_input_text = str(min_total_bet)
 
             elif event.type == pygame.KEYDOWN and raise_input_active:
@@ -208,19 +167,19 @@ while running:
                         raise_input_text = str(max_raise)
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                if not showed_result:
+                if not showed_result and current_player == 0:
                     mouse_pos = pygame.mouse.get_pos()
                     action = PlayerAction.get_player_action(
                         button_rects, mouse_pos, (1, 0, 0)
                     )
 
     # Update game state
-    all_sprites.update()  # Update all sprites
+    all_sprites.update()
 
     # Update screen
-    screen.fill((0, 0, 0))  # Fill the screen with a color
+    screen.fill((0, 0, 0))
 
-    # Draw action buttons
+    # Draw action buttons（只顯示真人）
     max_raise = players[current_player].chips
     is_allin_input = (
         display_raise_input.isdigit() and int(display_raise_input) == max_raise
@@ -248,18 +207,13 @@ while running:
             if action != PlayerAction.BET_OR_RAISE
         ]
 
-    # 判斷是否有玩家ALL-IN
     any_allin = any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players))
 
-    # 按鈕顯示條件修正
-    # 若有玩家ALL-IN則不顯示任何行動按鈕
     if (
         not pending_next_stage
         and not showed_result
         and game_stage != GameStage.SHOWDOWN
-        and not (
-            current_player == 1 and bot_action_pending
-        )
+        and current_player == 0
         and not any_allin
     ):
         draw_action_buttons(
@@ -280,71 +234,50 @@ while running:
 
     for i, hand in enumerate(hands):
         start_x, y = player_positions[i]
-        # 在手牌左邊顯示籌碼
         chip_text = font.render(f"Chips: {players[i].chips}", True, (255, 255, 255))
         chip_text_x = start_x - 180
         chip_text_y = y + game_setting["CARD_HEIGHT"] // 2 - chip_text.get_height() // 2
         screen.blit(chip_text, (chip_text_x, chip_text_y))
 
-        # 在手牌左邊顯示最後行動
         action_text = font.render(last_actions[i], True, (200, 200, 0))
         action_text_x = chip_text_x
         action_text_y = chip_text_y + chip_text.get_height() + 5
         screen.blit(action_text, (action_text_x, action_text_y))
 
-        # 判斷是否ALL-IN
-        allin_this_round = (
-            player_bets[i] > 0
-            and player_bets[i] == players[i].chips + player_bets[i]
-            and players[i].chips == 0
-        )
-
-        # 顯示手牌下注額
         bet_display = f"{player_bets[i]}"
         bet_text = font.render(f"{bet_display}", True, (0, 255, 255))
-
-        # 置中顯示下注額
         bet_text_x = start_x + (len(hand) * 80 - bet_text.get_width()) // 2
-        if i == 0:
-            bet_text_y = y - bet_text.get_height() - 10  # 手牌上方 10px
-        else:
-            bet_text_y = y + game_setting["CARD_HEIGHT"] + 10  # 玩家2維持下方
+        bet_text_y = y - bet_text.get_height() - 10 if i == 0 else y + game_setting["CARD_HEIGHT"] + 10
         screen.blit(bet_text, (bet_text_x, bet_text_y))
 
         for j, card in enumerate(hand):
-            # 玩家2只有在SHOWDOWN或showed_hands時才亮牌
-            if i == 1 and not showed_hands and game_stage != GameStage.SHOWDOWN:
+            # 只有真人玩家隨時亮牌，其餘玩家只在showdown或showed_hands時亮牌
+            if i != 0 and not showed_hands and game_stage != GameStage.SHOWDOWN:
                 img = card_images["BACK"]
             else:
                 img = card_images[card]
             x = start_x + j * 80
             screen.blit(img, (x, y))
 
-        # 取得目前最大牌型
         cards_to_check = hand + community_cards
-
-        # 玩家1隨時顯示牌型，玩家2只在SHOWDOWN時顯示
-        if (i == 0) or (i == 1 and (showed_hands or game_stage == GameStage.SHOWDOWN)):
+        if (i == 0) or (i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN)):
             if len(cards_to_check) >= 5:
                 best_rank = best_five(cards_to_check)
                 hand_type = get_hand_type_name(best_rank)
             else:
                 hand_type = ""
-            # 計算灰底位置與大小
             rect_x = start_x
-            rect_y = y + game_setting["CARD_HEIGHT"] - 40  # 蓋住手牌下方
+            rect_y = y + game_setting["CARD_HEIGHT"] - 40
             rect_width = len(hand) * 80
             rect_height = 40
             pygame.draw.rect(
                 screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height)
             )
-            # 白字置中
             text = font.render(hand_type, True, (255, 255, 255))
             text_x = rect_x + (rect_width - text.get_width()) // 2
             text_y = rect_y + (rect_height - text.get_height()) // 2
             screen.blit(text, (text_x, text_y))
 
-        # 在手牌右邊顯示黃點，表示輪到該玩家行動
         if (
             i == current_player
             and not showed_result
@@ -408,20 +341,18 @@ while running:
             current_player,
             last_raise_amount,
             last_actions,
-            bot_action_pending, 
+            bot_action_pending,
         ) = GameFlow.reset_game(
             deck, players, Chips, big_blind_player, big_blind_amount
         )
         pot = 0
-
-        # 重設玩家籌碼
         for player in players:
             if player.chips == 0:
                 player.chips = Chips.chips
 
     # 行動處理
     if action and not pending_next_stage:
-        result = handle_action(
+        result = ActionHandler.handle_action(
             action,
             players,
             player_bets,
@@ -461,7 +392,6 @@ while running:
         winner_text = result["winner_text"] if result["winner_text"] else winner_text
         pot_given = result.get("pot_given", pot_given)
         pot_give_time = result.get("pot_give_time", pot_give_time)
-
         if result.get("continue_flag"):
             continue
 
@@ -483,9 +413,9 @@ while running:
         if not showed_hands:
             last_actions = [""] * len(players)
 
-        # 使用 GameStage.advance_stage 進入下一階段
+        # 進入下一階段
         game_stage, community_cards, current_player = GameStage.advance_stage(
-            game_stage, deck, community_cards, big_blind_player
+            game_stage, deck, community_cards, big_blind_player, players
         )
 
         if game_stage == GameStage.SHOWDOWN:
@@ -495,15 +425,12 @@ while running:
             pending_next_stage = False
             next_stage_time = None
         else:
-            # 若還有玩家ALL-IN且未到SHOWDOWN，繼續自動進入下階段
-            # 但要等所有還有籌碼的玩家都已經 acted_this_round 且 bot 行動完
             if any(p.chips == 0 for p in players):
                 active_players = [i for i, p in enumerate(players) if p.chips > 0]
-                # 只有當所有還有籌碼的玩家都 acted_this_round 且 bot_action_pending 為 False 才進入下一階段
                 if all(acted_this_round[i] for i in active_players) and not bot_action_pending:
                     pending_next_stage = True
                     next_stage_time = pygame.time.get_ticks()
-                    showed_hands = True  # 持續公開手牌
+                    showed_hands = True
                 else:
                     pending_next_stage = False
                     next_stage_time = None
@@ -511,20 +438,7 @@ while running:
                 pending_next_stage = False
                 next_stage_time = None
 
-    # --- 新增：有玩家ALL-IN且雙方下注額相等且bot已行動完，自動 pending_next_stage ---
-    if (
-        not pending_next_stage
-        and any_allin
-        and player_bets[0] == player_bets[1]
-        and game_stage != GameStage.SHOWDOWN
-        and (
-            current_player != 1 or not bot_action_pending  # 只有不是bot行動或bot已行動完才推進
-        )
-    ):
-        pending_next_stage = True
-        next_stage_time = pygame.time.get_ticks()
-        showed_hands = True
-
+    # 公牌顯示
     community_card_positions = [
         (
             game_setting["WIDTH"] // 2 - 2 * 100 - game_setting["CARD_WIDTH"] // 2,
@@ -537,7 +451,7 @@ while running:
         (
             game_setting["WIDTH"] // 2 - game_setting["CARD_WIDTH"] // 2,
             game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
-        ),  # 第三張正中間
+        ),
         (
             game_setting["WIDTH"] // 2 + 100 - game_setting["CARD_WIDTH"] // 2,
             game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
@@ -547,7 +461,6 @@ while running:
             game_setting["HEIGHT"] // 2 - game_setting["CARD_HEIGHT"] // 2,
         ),
     ]
-
     for idx, card in enumerate(community_cards):
         img = card_images[card]
         pos = community_card_positions[idx]
@@ -555,11 +468,10 @@ while running:
 
     if community_cards:
         pot_text = font.render(f"Pot: {pot}", True, (255, 255, 0))
-        # 讓 pot 顯示在畫面正中央，公牌上方
         pot_x = game_setting["WIDTH"] // 2 - pot_text.get_width() // 2
-        pot_y = community_card_positions[0][1] - 40  # 公牌上方 40px
+        pot_y = community_card_positions[0][1] - 40
         screen.blit(pot_text, (pot_x, pot_y))
 
-    pygame.display.update()  # Update the display
+    pygame.display.update()
 
-pygame.quit()  # Quit Pygame
+pygame.quit()

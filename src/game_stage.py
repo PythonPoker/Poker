@@ -36,20 +36,23 @@ class GameStage(Enum):
                     return idx
             return start_idx
 
+        # 小盲玩家
+        small_blind_player = (big_blind_player + 1) % NUM_PLAYERS
+
         if game_stage == GameStage.PREFLOP:
             # 發三張公牌
             for _ in range(3):
                 community_cards.append(deck.cards.pop(0))
-            # 下一輪由大盲左手邊第二位開始，且還有籌碼
-            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            # 翻牌後由小盲開始
+            next_player = find_next_active_player(small_blind_player)
             return GameStage.FLOP, community_cards, next_player
         elif game_stage == GameStage.FLOP:
             community_cards.append(deck.cards.pop(0))
-            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            next_player = find_next_active_player(small_blind_player)
             return GameStage.TURN, community_cards, next_player
         elif game_stage == GameStage.TURN:
             community_cards.append(deck.cards.pop(0))
-            next_player = find_next_active_player((big_blind_player + 2) % NUM_PLAYERS)
+            next_player = find_next_active_player(small_blind_player)
             return GameStage.RIVER, community_cards, next_player
         elif game_stage == GameStage.RIVER:
             return GameStage.SHOWDOWN, community_cards, big_blind_player
