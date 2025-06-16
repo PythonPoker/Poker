@@ -132,6 +132,26 @@ while running:
                         raise_input_text = str(min_total_bet)
 
     # --- Bot行動 ---
+    if bots[current_player] is not None:
+        # Extract dealer_index from game_state or set it appropriately
+        dealer_index = game_state.get("dealer_index", 0)
+        
+        bot_action_result = bots[current_player].act(
+            hands[current_player],
+            community_cards,
+            player_bets,
+            players,
+            min_raise_amount,
+            players[current_player].chips,
+            to_call,
+            game_stage,
+            hands=hands,
+            dealer_index=dealer_index,
+            last_actions=last_actions,
+        )
+    else:
+        # 這是人類玩家，跳過或進入玩家操作流程
+        pass
     action_bot, bot_action_pending, bot_action_time, bot_action_result, raise_input_text = PokerBot.handle_bot_action(
         bots,
         hands,
