@@ -261,10 +261,15 @@ class PokerBot:
             # 允許2~5倍大盲隨機下注
             blind_multi = np.random.choice([2, 2.5, 3, 4, 5])
             bet_amount = int(min_raise * blind_multi)
-        else:
+        elif to_call == 0:
+            # 翻後沒人下注時，允許直接用底池比例下注
             bet_amount = int(pot * bet_ratio * overbet_ratio)
-        bet_amount = max(min_total_bet, bet_amount)
-        bet_amount = min(bet_amount, chips)
+            bet_amount = max(min_raise, bet_amount)
+            bet_amount = min(bet_amount, chips)
+        else:
+            # 有人下注時，加注必須 >= min_total_bet
+            bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
+            bet_amount = min(bet_amount, chips)
 
         # === bluff 延續性邏輯 ===
         bluff_this_street = False
