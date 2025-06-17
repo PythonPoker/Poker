@@ -275,20 +275,21 @@ class PokerBot:
             blind_multi = np.random.choice([2, 2.5, 3, 4, 5])
             bet_amount = int(min_raise * blind_multi)
         elif to_call == 0:
-            # 下注尺寸分布（更貼近現實）
-            pot_bet_choices = [0.5, 0.66, 0.75, 1.0, 1.25, 1.5]
-            # 強牌時更大，弱牌時較小
+            # 更鬆的下注尺寸分布
+            pot_bet_choices = [0.4, 0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 2.0]
             if win_rate > adj_thr_high:
-                bet_ratio = np.random.choice(pot_bet_choices[2:])  # 0.75~1.5 pot
+                bet_ratio = np.random.choice(pot_bet_choices[3:])  # 0.75~2.0 pot
             elif win_rate > adj_thr_mid:
-                bet_ratio = np.random.choice(pot_bet_choices[1:4]) # 0.66~1.0 pot
+                bet_ratio = np.random.choice(pot_bet_choices[1:6]) # 0.5~1.25 pot
             elif win_rate > adj_thr_low:
-                bet_ratio = np.random.choice(pot_bet_choices[:3])  # 0.5~0.75 pot
+                bet_ratio = np.random.choice(pot_bet_choices[:5])  # 0.4~1.0 pot
             else:
-                bet_ratio = 0.5 if np.random.rand() < 0.5 else 0.33 # bluff 0.33~0.5 pot
+                # bluff 也有機會下到 0.5~0.75 pot
+                bet_ratio = np.random.choice([0.33, 0.4, 0.5, 0.66, 0.75])
 
             bet_amount = int(pot * bet_ratio)
             bet_amount = max(min_raise, bet_amount)
+            bet_amount = min(bet_amount, chips)
         else:
             bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
 
