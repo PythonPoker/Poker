@@ -83,6 +83,7 @@ class GameFlow:
         bot_action_pending = False
         bot_action_time = 0
         bot_action_result = None
+        dealer_index = (big_blind_player - 2) % NUM_PLAYERS
 
         return {
             "deck": deck,
@@ -91,6 +92,7 @@ class GameFlow:
             "showed_hands": showed_hands,
             "showed_result": showed_result,
             "showdown_time": showdown_time,
+            "dealer_index": dealer_index,
             "handle_raise_input": handle_raise_input,
             "raise_input_text": raise_input_text,
             "raise_input_active": raise_input_active,
@@ -176,6 +178,7 @@ class GameFlow:
             if bot is not None:
                 bot.is_bluffing = False
                 bot.last_bluff_street = None
+        dealer_index = (big_blind_player - 2) % NUM_PLAYERS
         return (
             deck,
             hands,
@@ -197,5 +200,6 @@ class GameFlow:
             current_player,
             last_raise_amount,
             last_actions,
-            bot_action_pending,  # 新增
+            bot_action_pending,
+            dealer_index,
         )

@@ -309,6 +309,19 @@ while running:
 
     for i, hand in enumerate(hands):
         start_x, y = player_positions[i]
+
+        # 判斷是否是BTN
+        dealer_index = game_state.get("dealer_index", 0)
+        num_players = len(players)
+        rel_pos = (i - dealer_index) % num_players
+        is_button = (rel_pos == 0)
+        player_name = getattr(players[i], "name", f"P{i+1}")
+
+        # 顯示玩家名稱與BTN標記（移到最前面，無論是否棄牌都顯示）
+        UIUtils.draw_player_name(
+            screen, font, player_name, start_x, y, hand, game_setting["CARD_HEIGHT"], is_button
+        )
+
         # 籌碼
         UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"])
 
@@ -385,7 +398,7 @@ while running:
             screen,
         )
 
-        # pot 分配完畢後，延遲2秒自動開新局
+        # pot 分配完畢後，延遲2秒自動开新局
         if pot_given and pot_give_time and pygame.time.get_ticks() - pot_give_time > 2000:
             (
                 deck,
@@ -409,9 +422,11 @@ while running:
                 last_raise_amount,
                 last_actions,
                 bot_action_pending,
+                dealer_index,  # 新增
             ) = GameFlow.reset_game(
                 deck, players, Chips, big_blind_player, big_blind_amount, bots
             )
+            game_state["dealer_index"] = dealer_index  # 更新
             pot = 0
             for player in players:
                 if player.chips == 0:

@@ -179,3 +179,25 @@ class UIUtils:
         bet_text = font.render(f"{bet}", True, (0, 255, 255))
         bet_text_rect = bet_text.get_rect(center=(edge_x, edge_y))
         screen.blit(bet_text, bet_text_rect)
+
+    @staticmethod
+    def draw_player_name(screen, font, name, start_x, y, hand, card_height, is_button):
+        """
+        在手牌左側顯示玩家名稱，若是BTN則在下方畫紅底白字圓形D
+        """
+        hand_height = card_height
+        name_text = font.render(name, True, (255, 255, 255))
+        name_x = start_x - name_text.get_width() - 18
+        name_y = y + (hand_height - name_text.get_height()) // 2 - 50
+        screen.blit(name_text, (name_x, name_y))
+
+        if is_button:
+            # 畫紅底白字圓形D在名稱下方
+            circle_radius = 16
+            circle_x = name_x + name_text.get_width() // 2
+            circle_y = name_y + name_text.get_height() + circle_radius + 60
+            pygame.draw.circle(screen, (220, 40, 40), (circle_x, circle_y), circle_radius)
+            d_font = pygame.font.SysFont(None, 24)
+            d_text = d_font.render("D", True, (255, 255, 255))
+            d_rect = d_text.get_rect(center=(circle_x, circle_y))
+            screen.blit(d_text, d_rect)
