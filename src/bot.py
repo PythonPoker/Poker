@@ -249,14 +249,21 @@ class PokerBot:
         max_bet = max(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
-        # === 支援超池下注 ===
-        overbet_ratio = 1.0  # 預設最大下注為1倍pot
+        # === 支援超池下注與更大preflop下注 ===
+        overbet_ratio = 1.0
         if win_rate > adj_thr_high + 0.08 and r < 0.4:
-            overbet_ratio = np.random.uniform(1.2, 2.0)  # 40%機率超池，1.2~2倍pot
+            overbet_ratio = np.random.uniform(1.2, 2.0)
         elif r < 0.2:
-            overbet_ratio = np.random.uniform(1.2, 2.0)  # 20%機率隨機bluff超池
+            overbet_ratio = np.random.uniform(1.2, 2.0)
 
-        bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
+        # --- 新增：preflop第一輪允許大額下注 ---
+        if game_stage == GameStage.PREFLOP and max(player_bets) <= min_raise:
+            # 允許2~5倍大盲隨機下注
+            blind_multi = np.random.choice([2, 2.5, 3, 4, 5])
+            bet_amount = int(min_raise * blind_multi)
+        else:
+            bet_amount = int(pot * bet_ratio * overbet_ratio)
+        bet_amount = max(min_total_bet, bet_amount)
         bet_amount = min(bet_amount, chips)
 
         # === bluff 延續性邏輯 ===
