@@ -305,6 +305,7 @@ class PokerBot:
 
         if to_call == 0:
             if bluff_this_street:
+                #print(f"[BOT] Flop/Turn/River bet_amount={bet_amount}, pot={pot}, bet_ratio={bet_ratio}, overbet_ratio={overbet_ratio}, min_raise={min_raise}")
                 return ("bet", bet_amount)
             if bet_ratio > 0:
                 # --- 強牌時更積極 ---

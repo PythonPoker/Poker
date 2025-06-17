@@ -51,6 +51,7 @@ class ActionHandler:
         winner_text = None
         continue_flag = False
         num_players = len(players)
+        last_raise_amount = min_raise_amount
 
         actions_this_round += 1
         acted_this_round[current_player] = True
@@ -134,6 +135,7 @@ class ActionHandler:
                     raise_amount = players[current_player].chips
                 total_bet = raise_amount
                 min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
+                #print(f"[ACTION_HANDLER] raise_input_text={raise_input_text}, raise_amount={raise_amount}, min_raise_amount={min_raise_amount}, min_total_bet={min_total_bet}")
                 if total_bet >= min_total_bet and total_bet <= max_bet + max_raise:
                     pay = total_bet - player_bets[current_player]
                     pay = min(pay, players[current_player].chips)
@@ -145,12 +147,12 @@ class ActionHandler:
                         last_actions[current_player] = "BET"
                     else:
                         last_actions[current_player] = "RAISE"
+                    # 在加注成功後
+                    last_raise_amount = total_bet - max_bet
                     raise_input_text = ""
                     # 加注後，所有人都要重新行動
                     acted_this_round = [False for _ in range(num_players)]
                     acted_this_round[current_player] = True
-                    #print(f"BOT加注金額: {raise_amount}, 最小加注: {min_raise_amount}, 最小總下注: {min_total_bet}")
-                    # 換到下一個有籌碼且未 acted 的玩家
                     current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
 
         # 判斷是否可以進入下一階段（所有有籌碼玩家都已行動且下注額相等）
@@ -190,4 +192,5 @@ class ActionHandler:
             "raise_input_text": raise_input_text,
             "winner_text": winner_text,
             "continue_flag": continue_flag,
+            "last_raise_amount": last_raise_amount,
         }

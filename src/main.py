@@ -186,7 +186,7 @@ while running:
             pot,
             bet,
             raise_input_text,
-            min_raise_amount,
+            last_raise_amount,  # 這裡直接傳
             display_raise_input,
             big_blind_player,
             showed_hands,
@@ -215,6 +215,9 @@ while running:
         winner_text = result["winner_text"] if result["winner_text"] else winner_text
         pot_given = result.get("pot_given", pot_given)
         pot_give_time = result.get("pot_give_time", pot_give_time)
+        last_raise_amount = result.get("last_raise_amount", last_raise_amount)
+        if "last_raise_amount" in result:
+            last_raise_amount = result["last_raise_amount"]
         if result.get("continue_flag"):
             continue
 
