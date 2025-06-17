@@ -161,7 +161,11 @@ class PokerBot:
         hands=None,
         dealer_index=0,
         last_actions=None,
+        pot=None,  # 新增
     ):
+        if pot is None:
+            pot = sum(player_bets)
+
         chips = players[self.player_index].chips
         num_players = len(players)
         win_rate = self.estimate_win_rate(
@@ -197,7 +201,7 @@ class PokerBot:
         adj_thr_high = thr_high
         adj_thr_mid = thr_mid
         adj_thr_low = thr_low
-        bet_ratio = 0.5
+        bet_ratio = 1.0
 
         for i, opp in enumerate(self.opp_models):
             if i == self.player_index or getattr(players[i], "is_folded", False):
@@ -249,27 +253,44 @@ class PokerBot:
         max_bet = max(player_bets)
         min_total_bet = max_bet + min_raise if max_bet > 0 else min_raise
 
-        # === 支援超池下注與更大preflop下注 ===
+        # 根據勝率決定下注/加注尺寸
+        if win_rate > adj_thr_high:
+            bet_ratio = np.random.uniform(0.7, 1.2)  # 強牌時 0.7~1.2 pot
+        elif win_rate > adj_thr_mid:
+            bet_ratio = np.random.uniform(0.5, 0.8)  # 中等牌力 0.5~0.8 pot
+        elif win_rate > adj_thr_low:
+            bet_ratio = np.random.uniform(0.33, 0.5) # 弱牌時 0.33~0.5 pot
+        else:
+            bet_ratio = np.random.uniform(0.15, 0.33) # bluff 時 0.15~0.33 pot
+
+        # 強牌時偶爾超池
         overbet_ratio = 1.0
-        if win_rate > adj_thr_high + 0.08 and r < 0.4:
-            overbet_ratio = np.random.uniform(1.2, 2.0)
-        elif r < 0.2:
-            overbet_ratio = np.random.uniform(1.2, 2.0)
+        if win_rate > adj_thr_high + 0.08 and r < 0.3:
+            overbet_ratio = np.random.uniform(1.2, 1.8)
+        elif r < 0.05:
+            overbet_ratio = np.random.uniform(1.2, 1.5)
 
         # --- 新增：preflop第一輪允許大額下注 ---
         if game_stage == GameStage.PREFLOP and max(player_bets) <= min_raise:
-            # 允許2~5倍大盲隨機下注
             blind_multi = np.random.choice([2, 2.5, 3, 4, 5])
             bet_amount = int(min_raise * blind_multi)
         elif to_call == 0:
-            # 翻後沒人下注時，允許直接用底池比例下注
-            bet_amount = int(pot * bet_ratio * overbet_ratio)
+            # 下注尺寸分布（更貼近現實）
+            pot_bet_choices = [0.5, 0.66, 0.75, 1.0, 1.25, 1.5]
+            # 強牌時更大，弱牌時較小
+            if win_rate > adj_thr_high:
+                bet_ratio = np.random.choice(pot_bet_choices[2:])  # 0.75~1.5 pot
+            elif win_rate > adj_thr_mid:
+                bet_ratio = np.random.choice(pot_bet_choices[1:4]) # 0.66~1.0 pot
+            elif win_rate > adj_thr_low:
+                bet_ratio = np.random.choice(pot_bet_choices[:3])  # 0.5~0.75 pot
+            else:
+                bet_ratio = 0.5 if np.random.rand() < 0.5 else 0.33 # bluff 0.33~0.5 pot
+
+            bet_amount = int(pot * bet_ratio)
             bet_amount = max(min_raise, bet_amount)
-            bet_amount = min(bet_amount, chips)
         else:
-            # 有人下注時，加注必須 >= min_total_bet
             bet_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio))
-            bet_amount = min(bet_amount, chips)
 
         # === bluff 延續性邏輯 ===
         bluff_this_street = False

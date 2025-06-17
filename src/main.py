@@ -148,6 +148,7 @@ while running:
             hands=hands,
             dealer_index=dealer_index,
             last_actions=last_actions,
+            pot=pot,  # 新增
         )
     else:
         # 這是人類玩家，跳過或進入玩家操作流程
@@ -233,6 +234,7 @@ while running:
         player_bets = [0] * len(players)
         bet = 0
         min_raise_amount = big_blind_amount
+        last_raise_amount = big_blind_amount
         raise_input_text = str(min_raise_amount)
         display_raise_input = raise_input_text
 
