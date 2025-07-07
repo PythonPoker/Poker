@@ -104,7 +104,9 @@ while running:
         ):
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 mouse_pos = pygame.mouse.get_pos()
-                action = PlayerAction.get_player_action(button_rects, mouse_pos, (1, 0, 0))
+                action = PlayerAction.get_player_action(
+                    button_rects, mouse_pos, (1, 0, 0)
+                )
             elif event.type == pygame.KEYDOWN and raise_input_active:
                 raise_input_text = handle_raise_input(
                     event,
@@ -135,7 +137,7 @@ while running:
     if bots[current_player] is not None:
         # Extract dealer_index from game_state or set it appropriately
         dealer_index = game_state.get("dealer_index", 0)
-        
+
         bot_action_result = bots[current_player].act(
             hands[current_player],
             community_cards,
@@ -153,7 +155,13 @@ while running:
     else:
         # 這是人類玩家，跳過或進入玩家操作流程
         pass
-    action_bot, bot_action_pending, bot_action_time, bot_action_result, raise_input_text = PokerBot.handle_bot_action(
+    (
+        action_bot,
+        bot_action_pending,
+        bot_action_time,
+        bot_action_result,
+        raise_input_text,
+    ) = PokerBot.handle_bot_action(
         bots,
         hands,
         community_cards,
@@ -169,7 +177,7 @@ while running:
         bot_action_time,
         bot_action_result,
         raise_input_text,
-        bot_action_delay
+        bot_action_delay,
     )
     if not bot_action_pending and action_bot is not None and current_player != 0:
         action = action_bot
@@ -319,21 +327,37 @@ while running:
         dealer_index = game_state.get("dealer_index", 0)
         num_players = len(players)
         rel_pos = (i - dealer_index) % num_players
-        is_button = (rel_pos == 0)
+        is_button = rel_pos == 0
         player_name = getattr(players[i], "name", f"P{i+1}")
 
         # 顯示玩家名稱與BTN標記（移到最前面，無論是否棄牌都顯示）
         UIUtils.draw_player_name(
-            screen, font, player_name, start_x, y, hand, game_setting["CARD_HEIGHT"], is_button
+            screen,
+            font,
+            player_name,
+            start_x,
+            y,
+            hand,
+            game_setting["CARD_HEIGHT"],
+            is_button,
         )
 
         # 籌碼
-        UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"])
+        UIUtils.draw_chip_text(
+            screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"]
+        )
 
         # 只顯示本回合有下注的玩家（不論是否棄牌）
         if player_bets[i] > 0:
             UIUtils.draw_bet_text_on_hand_edge_toward_community(
-                screen, font, player_bets[i], start_x, y, hand, game_setting["CARD_HEIGHT"], game_setting
+                screen,
+                font,
+                player_bets[i],
+                start_x,
+                y,
+                hand,
+                game_setting["CARD_HEIGHT"],
+                game_setting,
             )
 
         # 棄牌玩家不顯示手牌和牌型
@@ -341,38 +365,70 @@ while running:
             # 行動圓點
             UIUtils.draw_action_dot(
                 screen,
-                i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN,
-                start_x, y, hand, game_setting["CARD_HEIGHT"]
+                i == current_player
+                and not showed_result
+                and not pending_next_stage
+                and game_stage != GameStage.SHOWDOWN,
+                start_x,
+                y,
+                hand,
+                game_setting["CARD_HEIGHT"],
             )
             # 行動顯示
-            UIUtils.draw_action_on_hand(screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"])
+            UIUtils.draw_action_on_hand(
+                screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"]
+            )
             continue  # 跳過手牌和牌型
 
         # 手牌
-        show_hand = (i == 0) or (i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN))
+        show_hand = (i == 0) or (
+            i != 0 and (showed_hands or game_stage == GameStage.SHOWDOWN)
+        )
         UIUtils.draw_hand(screen, hand, card_images, start_x, y, show_hand)
 
         # 牌型顯示（手牌下方，灰底白字）
         if show_hand and len(hand + community_cards) >= 5:
             best_rank = best_five(hand + community_cards)
             hand_type = get_hand_type_name(best_rank)
-            UIUtils.draw_hand_type(screen, font, hand_type, start_x, y, hand, game_setting["CARD_HEIGHT"])
+            UIUtils.draw_hand_type(
+                screen, font, hand_type, start_x, y, hand, game_setting["CARD_HEIGHT"]
+            )
 
         UIUtils.draw_action_dot(
             screen,
-            i == current_player and not showed_result and not pending_next_stage and game_stage != GameStage.SHOWDOWN,
-            start_x, y, hand, game_setting["CARD_HEIGHT"]
+            i == current_player
+            and not showed_result
+            and not pending_next_stage
+            and game_stage != GameStage.SHOWDOWN,
+            start_x,
+            y,
+            hand,
+            game_setting["CARD_HEIGHT"],
         )
         # 行動顯示
-        UIUtils.draw_action_on_hand(screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"])
-        UIUtils.draw_chip_text(screen, font, players[i].chips, start_x, y, game_setting["CARD_HEIGHT"], hand)
+        UIUtils.draw_action_on_hand(
+            screen, last_actions[i], start_x, y, hand, game_setting["CARD_HEIGHT"]
+        )
+        UIUtils.draw_chip_text(
+            screen,
+            font,
+            players[i].chips,
+            start_x,
+            y,
+            game_setting["CARD_HEIGHT"],
+            hand,
+        )
 
     # 公牌
     community_card_positions = UIUtils.get_community_card_positions(game_setting)
-    UIUtils.draw_community_cards(screen, card_images, community_cards, community_card_positions)
+    UIUtils.draw_community_cards(
+        screen, card_images, community_cards, community_card_positions
+    )
 
     if community_cards:
-        UIUtils.draw_pot_text(screen, font, pot, community_card_positions, game_setting["WIDTH"])
+        UIUtils.draw_pot_text(
+            screen, font, pot, community_card_positions, game_setting["WIDTH"]
+        )
 
     # SHOWDOWN 階段：顯示勝者並自動進入下一局
     if game_stage == GameStage.SHOWDOWN:
@@ -404,7 +460,11 @@ while running:
         )
 
         # pot 分配完畢後，延遲2秒自動开新局
-        if pot_given and pot_give_time and pygame.time.get_ticks() - pot_give_time > 2000:
+        if (
+            pot_given
+            and pot_give_time
+            and pygame.time.get_ticks() - pot_give_time > 2000
+        ):
             (
                 deck,
                 hands,

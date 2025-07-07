@@ -21,7 +21,9 @@ class GameStage(Enum):
         return None
 
     @staticmethod
-    def advance_stage(game_stage, deck, community_cards, big_blind_player, players=None):
+    def advance_stage(
+        game_stage, deck, community_cards, big_blind_player, players=None
+    ):
         NUM_PLAYERS = len(players) if players else 6
 
         def find_next_active_player(start_idx):
@@ -30,7 +32,9 @@ class GameStage(Enum):
                 idx = (start_idx + offset) % NUM_PLAYERS
                 if players is None:
                     return idx
-                if players[idx].chips > 0 and not getattr(players[idx], "is_folded", False):
+                if players[idx].chips > 0 and not getattr(
+                    players[idx], "is_folded", False
+                ):
                     return idx
             return start_idx
 

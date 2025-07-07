@@ -43,7 +43,9 @@ class GameFlow:
         pot = 0
 
         players = [Player(i) for i in range(NUM_PLAYERS)]
-        bots = [None] + [PokerBot(i) for i in range(1, NUM_PLAYERS)]  # 玩家1真人，其餘為bot
+        bots = [None] + [
+            PokerBot(i) for i in range(1, NUM_PLAYERS)
+        ]  # 玩家1真人，其餘為bot
 
         # 隨機選一位玩家作為小盲
         small_blind_player = random.randint(0, NUM_PLAYERS - 1)
@@ -72,12 +74,12 @@ class GameFlow:
 
         W, H = game_setting["WIDTH"], game_setting["HEIGHT"]
         player_positions = [
-            (W // 2 - 80, H - 170),      # 玩家1（中下，真人）
-            (150, H - 250),              # 玩家2（左下）
-            (100, H // 3),               # 玩家3（左中）
-            (300 , 40),                  # 玩家4（左上）
-            (W - 480, 40),              # 玩家5（右上）
-            (W - 300, H // 3),           # 玩家6（右中）
+            (W // 2 - 80, H - 170),  # 玩家1（中下，真人）
+            (150, H - 250),  # 玩家2（左下）
+            (100, H // 3),  # 玩家3（左中）
+            (300, 40),  # 玩家4（左上）
+            (W - 480, 40),  # 玩家5（右上）
+            (W - 300, H // 3),  # 玩家6（右中）
         ]
 
         bot_action_pending = False
