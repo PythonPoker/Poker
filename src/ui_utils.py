@@ -1,5 +1,6 @@
 import pygame
 
+
 class UIUtils:
     @staticmethod
     def draw_chip_text(screen, font, chips, start_x, y, card_height, hand=None):
@@ -13,7 +14,7 @@ class UIUtils:
             hand_width = len(hand) * 80
         chip_text = font.render(f"{chips}", True, (255, 255, 255))
         chip_text_x = start_x + (hand_width - chip_text.get_width()) // 2
-        chip_text_y = y + card_height - 40   # 可微調與手牌距離
+        chip_text_y = y + card_height - 40  # 可微調與手牌距離
         # 畫灰底圓角矩形
         padding_x, padding_y = 10, 4
         bg_rect = pygame.Rect(
@@ -30,7 +31,11 @@ class UIUtils:
     def draw_bet_text(screen, font, bet, start_x, y, hand, card_height, player_index):
         bet_text = font.render(f"{bet}", True, (0, 255, 255))
         bet_text_x = start_x + (len(hand) * 80 - bet_text.get_width()) // 2
-        bet_text_y = y - bet_text.get_height() - 10 if player_index == 0 else y + card_height + 10
+        bet_text_y = (
+            y - bet_text.get_height() - 10
+            if player_index == 0
+            else y + card_height + 10
+        )
         screen.blit(bet_text, (bet_text_x, bet_text_y))
 
     def draw_hand(screen, hand, card_images, start_x, y, show_hand):
@@ -49,7 +54,10 @@ class UIUtils:
         rect_width = len(hand) * 80
         rect_height = 32
         pygame.draw.rect(
-            screen, (60, 60, 60), (rect_x, rect_y, rect_width, rect_height), border_radius=8
+            screen,
+            (60, 60, 60),
+            (rect_x, rect_y, rect_width, rect_height),
+            border_radius=8,
         )
         text = font.render(hand_type, True, (255, 255, 255))
         text_x = rect_x + (rect_width - text.get_width()) // 2
@@ -62,17 +70,17 @@ class UIUtils:
             hand_width = len(hand) * 80
             hand_height = card_height
             border_rect = pygame.Rect(
-                start_x - 8,           # 左右各多出8px
-                y - 8,                 # 上下各多出8px
+                start_x - 8,  # 左右各多出8px
+                y - 8,  # 上下各多出8px
                 hand_width + 16,
-                hand_height + 16
+                hand_height + 16,
             )
             pygame.draw.rect(
                 screen,
-                (255, 215, 0),         # 黃色
+                (255, 215, 0),  # 黃色
                 border_rect,
-                width=4,               # 線寬4px
-                border_radius=14       # 圓角
+                width=4,  # 線寬4px
+                border_radius=14,  # 圓角
             )
 
     def draw_action_on_hand(screen, last_action, start_x, y, hand, card_height):
@@ -86,15 +94,22 @@ class UIUtils:
             action_bg_x = start_x + (hand_width - action_bg_width) // 2
             action_bg_y = y + (hand_height - action_bg_height) // 2
             pygame.draw.rect(
-                screen, (0, 0, 0),
+                screen,
+                (0, 0, 0),
                 (action_bg_x, action_bg_y, action_bg_width, action_bg_height),
-                border_radius=8
+                border_radius=8,
             )
-            action_text_x = action_bg_x + (action_bg_width - action_text.get_width()) // 2
-            action_text_y = action_bg_y + (action_bg_height - action_text.get_height()) // 2
+            action_text_x = (
+                action_bg_x + (action_bg_width - action_text.get_width()) // 2
+            )
+            action_text_y = (
+                action_bg_y + (action_bg_height - action_text.get_height()) // 2
+            )
             screen.blit(action_text, (action_text_x, action_text_y))
 
-    def draw_community_cards(screen, card_images, community_cards, community_card_positions):
+    def draw_community_cards(
+        screen, card_images, community_cards, community_card_positions
+    ):
         for idx, card in enumerate(community_cards):
             img = card_images[card]
             pos = community_card_positions[idx]
@@ -121,7 +136,7 @@ class UIUtils:
         bet_text_offset = 200  # 距離中心的偏移量，可自行調整
         dx = center_x - hand_center_x
         dy = center_y - hand_center_y
-        length = (dx ** 2 + dy ** 2) ** 0.5
+        length = (dx**2 + dy**2) ** 0.5
         if length == 0:
             bet_x, bet_y = hand_center_x, hand_center_y
         else:
@@ -138,9 +153,9 @@ class UIUtils:
         CARD_W, CARD_H = game_setting["CARD_WIDTH"], game_setting["CARD_HEIGHT"]
         positions = [
             (W // 2 - 2 * 100 - CARD_W // 2, H // 2 - CARD_H // 2),
-            (W // 2 - 100 - CARD_W // 2,     H // 2 - CARD_H // 2),
-            (W // 2 - CARD_W // 2,           H // 2 - CARD_H // 2),
-            (W // 2 + 100 - CARD_W // 2,     H // 2 - CARD_H // 2),
+            (W // 2 - 100 - CARD_W // 2, H // 2 - CARD_H // 2),
+            (W // 2 - CARD_W // 2, H // 2 - CARD_H // 2),
+            (W // 2 + 100 - CARD_W // 2, H // 2 - CARD_H // 2),
             (W // 2 + 2 * 100 - CARD_W // 2, H // 2 - CARD_H // 2),
         ]
         return positions
@@ -161,13 +176,29 @@ class UIUtils:
         # 計算公牌中心
         community_positions = UIUtils.get_community_card_positions(game_setting)
         num_community = 5
-        cx = sum([pos[0] + game_setting["CARD_WIDTH"] // 2 for pos in community_positions[:num_community]]) / num_community
-        cy = sum([pos[1] + game_setting["CARD_HEIGHT"] // 2 for pos in community_positions[:num_community]]) / num_community
+        cx = (
+            sum(
+                [
+                    pos[0] + game_setting["CARD_WIDTH"] // 2
+                    for pos in community_positions[:num_community]
+                ]
+            )
+            / num_community
+        )
+        cy = (
+            sum(
+                [
+                    pos[1] + game_setting["CARD_HEIGHT"] // 2
+                    for pos in community_positions[:num_community]
+                ]
+            )
+            / num_community
+        )
 
         # 計算方向向量
         dx = cx - hand_center_x
         dy = cy - hand_center_y
-        length = (dx ** 2 + dy ** 2) ** 0.5
+        length = (dx**2 + dy**2) ** 0.5
         if length == 0:
             edge_x, edge_y = hand_center_x, hand_center_y
         else:
@@ -196,7 +227,9 @@ class UIUtils:
             circle_radius = 16
             circle_x = name_x + name_text.get_width() // 2
             circle_y = name_y + name_text.get_height() + circle_radius + 60
-            pygame.draw.circle(screen, (220, 40, 40), (circle_x, circle_y), circle_radius)
+            pygame.draw.circle(
+                screen, (220, 40, 40), (circle_x, circle_y), circle_radius
+            )
             d_font = pygame.font.SysFont(None, 24)
             d_text = d_font.render("D", True, (255, 255, 255))
             d_rect = d_text.get_rect(center=(circle_x, circle_y))

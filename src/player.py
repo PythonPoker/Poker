@@ -15,4 +15,3 @@ class Player(pygame.sprite.Sprite):
 
     def set_big_blind(self, is_bb):
         self.is_big_blind = is_bb
-

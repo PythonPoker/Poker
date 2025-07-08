@@ -2,6 +2,7 @@ from action import PlayerAction
 from game_stage import GameStage
 import pygame
 
+
 class ActionHandler:
     def __init__(self):
         self.pot_given = False
@@ -21,11 +22,11 @@ class ActionHandler:
                 return idx
         return current_player
 
-
     def count_active_players(players, player_bets):
         """計算還有籌碼且未棄牌且有下注的玩家數"""
-        return sum(1 for i, p in enumerate(players) if p.chips > 0 or player_bets[i] > 0)
-
+        return sum(
+            1 for i, p in enumerate(players) if p.chips > 0 or player_bets[i] > 0
+        )
 
     def handle_action(
         action,
@@ -62,7 +63,9 @@ class ActionHandler:
             players[current_player].fold()  # 標記已棄牌
 
             # 只剩一個未棄牌玩家才直接結束（不管籌碼，只看 is_folded）
-            not_folded_players = [i for i, p in enumerate(players) if not getattr(p, "is_folded", False)]
+            not_folded_players = [
+                i for i, p in enumerate(players) if not getattr(p, "is_folded", False)
+            ]
             if len(not_folded_players) == 1:
                 winner = not_folded_players[0]
                 game_stage = GameStage.SHOWDOWN
@@ -100,7 +103,9 @@ class ActionHandler:
                     "pot_give_time": pot_give_time,
                 }
             else:
-                current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
+                current_player = ActionHandler.get_next_active_player(
+                    players, acted_this_round, current_player
+                )
 
         elif action == PlayerAction.CALL_OR_CHECK:
             max_bet = max(player_bets)
@@ -121,7 +126,9 @@ class ActionHandler:
                 last_actions[current_player] = "CHECK"
 
             # 換到下一個有籌碼且未 acted 的玩家
-            current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
+            current_player = ActionHandler.get_next_active_player(
+                players, acted_this_round, current_player
+            )
 
         elif action == PlayerAction.BET_OR_RAISE:
             max_bet = max(player_bets)
@@ -134,8 +141,10 @@ class ActionHandler:
                 if raise_amount > players[current_player].chips:
                     raise_amount = players[current_player].chips
                 total_bet = raise_amount
-                min_total_bet = max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
-                #print(f"[ACTION_HANDLER] raise_input_text={raise_input_text}, raise_amount={raise_amount}, min_raise_amount={min_raise_amount}, min_total_bet={min_total_bet}")
+                min_total_bet = (
+                    max_bet + min_raise_amount if max_bet > 0 else min_raise_amount
+                )
+                # print(f"[ACTION_HANDLER] raise_input_text={raise_input_text}, raise_amount={raise_amount}, min_raise_amount={min_raise_amount}, min_total_bet={min_total_bet}")
                 if total_bet >= min_total_bet and total_bet <= max_bet + max_raise:
                     pay = total_bet - player_bets[current_player]
                     pay = min(pay, players[current_player].chips)
@@ -153,12 +162,16 @@ class ActionHandler:
                     # 加注後，所有人都要重新行動
                     acted_this_round = [False for _ in range(num_players)]
                     acted_this_round[current_player] = True
-                    current_player = ActionHandler.get_next_active_player(players, acted_this_round, current_player)
+                    current_player = ActionHandler.get_next_active_player(
+                        players, acted_this_round, current_player
+                    )
 
         # 判斷是否可以進入下一階段（所有有籌碼玩家都已行動且下注額相等）
         active_players = [
-            i for i, p in enumerate(players)
-            if (p.chips > 0 or player_bets[i] > 0) and not getattr(p, "is_folded", False)
+            i
+            for i, p in enumerate(players)
+            if (p.chips > 0 or player_bets[i] > 0)
+            and not getattr(p, "is_folded", False)
         ]
         all_acted = all(acted_this_round[i] for i in active_players)
         all_equal_bet = len(set(player_bets[i] for i in active_players)) == 1
@@ -172,7 +185,10 @@ class ActionHandler:
         elif all_acted and all_equal_bet:
             pending_next_stage = True
             result_time = pygame.time.get_ticks()
-            if any(players[i].chips == 0 for i in active_players) and game_stage != GameStage.SHOWDOWN:
+            if (
+                any(players[i].chips == 0 for i in active_players)
+                and game_stage != GameStage.SHOWDOWN
+            ):
                 showed_hands = True  # 立即公開手牌
 
         return {

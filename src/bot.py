@@ -79,26 +79,28 @@ class PokerBot:
         # 數值整體下修，讓bot更鬆
         if game_stage == GameStage.PREFLOP:
             thresholds = {
-                "UTG":  (0.65, 0.50, 0.35),
-                "MP":   (0.62, 0.48, 0.33),
-                "CO":   (0.58, 0.44, 0.30),  # 更鬆
-                "BTN":  (0.54, 0.40, 0.26),  # 更鬆
-                "SB":   (0.60, 0.45, 0.30),
-                "BB":   (0.58, 0.43, 0.28),
+                "UTG": (0.65, 0.50, 0.35),
+                "MP": (0.62, 0.48, 0.33),
+                "CO": (0.58, 0.44, 0.30),  # 更鬆
+                "BTN": (0.54, 0.40, 0.26),  # 更鬆
+                "SB": (0.60, 0.45, 0.30),
+                "BB": (0.58, 0.43, 0.28),
             }
         else:
             # 翻牌後再降一點
             thresholds = {
-                "UTG":  (0.60, 0.45, 0.30),
-                "MP":   (0.58, 0.43, 0.28),
-                "CO":   (0.54, 0.40, 0.26),  # 更鬆
-                "BTN":  (0.50, 0.36, 0.22),  # 更鬆
-                "SB":   (0.56, 0.41, 0.26),
-                "BB":   (0.54, 0.39, 0.24),
+                "UTG": (0.60, 0.45, 0.30),
+                "MP": (0.58, 0.43, 0.28),
+                "CO": (0.54, 0.40, 0.26),  # 更鬆
+                "BTN": (0.50, 0.36, 0.22),  # 更鬆
+                "SB": (0.56, 0.41, 0.26),
+                "BB": (0.54, 0.39, 0.24),
             }
         return thresholds.get(position, (0.6, 0.45, 0.3))
 
-    def estimate_win_rate(self, hand, community_cards, hands, players, num_simulations=300):
+    def estimate_win_rate(
+        self, hand, community_cards, hands, players, num_simulations=300
+    ):
         """
         蒙地卡羅模擬，估算bot在目前情境下的勝率（支援多玩家）
         """
@@ -111,7 +113,11 @@ class PokerBot:
         # 找出已知牌（自己的手牌、所有已知手牌、已知公牌）
         used_cards = set(community_cards + hand)
         for i, h in enumerate(hands):
-            if i != self.player_index and h and not getattr(players[i], "is_folded", False):
+            if (
+                i != self.player_index
+                and h
+                and not getattr(players[i], "is_folded", False)
+            ):
                 used_cards.update(h)
 
         deck = Deck()
@@ -182,10 +188,7 @@ class PokerBot:
                 continue
             # 更新對手模型
             self.opp_models[i].update(
-                act,
-                player_bets[i],
-                pot,
-                getattr(players[i], "is_folded", False)
+                act, player_bets[i], pot, getattr(players[i], "is_folded", False)
             )
             if act in ("RAISE", "BET"):
                 num_raises += 1
@@ -237,7 +240,9 @@ class PokerBot:
             bet_ratio = 0.6
 
         # 根據剩餘人數調整門檻
-        active_players = [p for p in players if not getattr(p, "is_folded", False) and p.chips > 0]
+        active_players = [
+            p for p in players if not getattr(p, "is_folded", False) and p.chips > 0
+        ]
         num_active = len(active_players)
         if num_active <= 3:
             adj_thr_high -= 0.04
@@ -258,9 +263,9 @@ class PokerBot:
         elif win_rate > adj_thr_mid:
             bet_ratio = np.random.uniform(0.5, 0.8)  # 中等牌力 0.5~0.8 pot
         elif win_rate > adj_thr_low:
-            bet_ratio = np.random.uniform(0.33, 0.5) # 弱牌時 0.33~0.5 pot
+            bet_ratio = np.random.uniform(0.33, 0.5)  # 弱牌時 0.33~0.5 pot
         else:
-            bet_ratio = np.random.uniform(0.15, 0.33) # bluff 時 0.15~0.33 pot
+            bet_ratio = np.random.uniform(0.15, 0.33)  # bluff 時 0.15~0.33 pot
 
         # 強牌時偶爾超池
         overbet_ratio = 1.0
@@ -279,7 +284,7 @@ class PokerBot:
             if win_rate > adj_thr_high:
                 bet_ratio = np.random.choice(pot_bet_choices[3:])  # 0.75~2.0 pot
             elif win_rate > adj_thr_mid:
-                bet_ratio = np.random.choice(pot_bet_choices[1:6]) # 0.5~1.25 pot
+                bet_ratio = np.random.choice(pot_bet_choices[1:6])  # 0.5~1.25 pot
             elif win_rate > adj_thr_low:
                 bet_ratio = np.random.choice(pot_bet_choices[:5])  # 0.4~1.0 pot
             else:
@@ -308,7 +313,12 @@ class PokerBot:
                 bluff_this_street = True  # 同一階段繼續bluff
 
         # 若這輪本來就有bluff機率，且勝率低
-        elif to_call == 0 and bet_ratio > 0 and win_rate < adj_thr_low and np.random.rand() < 0.15:
+        elif (
+            to_call == 0
+            and bet_ratio > 0
+            and win_rate < adj_thr_low
+            and np.random.rand() < 0.15
+        ):
             bluff_this_street = True
             self.is_bluffing = True
             self.last_bluff_street = game_stage
@@ -326,7 +336,7 @@ class PokerBot:
 
         if to_call == 0:
             if bluff_this_street:
-                #print(f"[BOT] Flop/Turn/River bet_amount={bet_amount}, pot={pot}, bet_ratio={bet_ratio}, overbet_ratio={overbet_ratio}, min_raise={min_raise}")
+                # print(f"[BOT] Flop/Turn/River bet_amount={bet_amount}, pot={pot}, bet_ratio={bet_ratio}, overbet_ratio={overbet_ratio}, min_raise={min_raise}")
                 return ("bet", bet_amount)
             if bet_ratio > 0:
                 # --- 強牌時更積極 ---
@@ -356,10 +366,14 @@ class PokerBot:
                 return ("check", 0)
         else:
             if bluff_this_street and chips > to_call + min_raise:
-                raise_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call)
+                raise_amount = max(
+                    min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call
+                )
                 raise_amount = min(raise_amount, chips)
                 return ("raise", raise_amount)
-            raise_amount = max(min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call)
+            raise_amount = max(
+                min_total_bet, int(pot * bet_ratio * overbet_ratio) + to_call
+            )
             raise_amount = min(raise_amount, chips)
             if win_rate > adj_thr_high and chips > to_call + min_raise:
                 if r < 0.5 and bet_ratio > 0:
@@ -416,7 +430,12 @@ class PokerBot:
             and not showed_result
             and game_stage != GameStage.SHOWDOWN
             and players[current_player].chips > 0
-            and (not pending_next_stage or any(p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players)))
+            and (
+                not pending_next_stage
+                or any(
+                    p.chips == 0 and player_bets[i] > 0 for i, p in enumerate(players)
+                )
+            )
         ):
             now = pygame.time.get_ticks()
             if not bot_action_pending:
@@ -454,4 +473,10 @@ class PokerBot:
                 bot_action_pending = False
         else:
             bot_action_pending = False
-        return action, bot_action_pending, bot_action_time, bot_action_result, raise_input_text
+        return (
+            action,
+            bot_action_pending,
+            bot_action_time,
+            bot_action_result,
+            raise_input_text,
+        )
